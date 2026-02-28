@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -35,13 +36,17 @@ func main() {
 
 		// JSON'u otomatik bind et (Hata varsa direkt 400 döner)
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[HATA] JSON Bind Hatası: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz JSON veya eksik raw_hex"})
 			return
 		}
 
+		log.Printf("Gelen ISO Mesajı: %s", req.RawHex)
+
 		// Hex -> Byte
 		rawBytes, err := hex.DecodeString(req.RawHex)
 		if err != nil {
+			log.Printf("[HATA] Hex Decode Hatası: %v | Veri: %s", err, req.RawHex)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Hex formatı hatalı"})
 			return
 		}
@@ -49,6 +54,7 @@ func main() {
 		// ISO Unpack (isoFields.go'daki MessageSpec'i kullanır)
 		message := iso8583.NewMessage(spec)
 		if err := message.Unpack(rawBytes); err != nil {
+			log.Printf("[HATA] ISO Unpack Hatası: %v | Veri: %s", err, req.RawHex)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("ISO Parse Hatası: %v", err)})
 			return
 		}
