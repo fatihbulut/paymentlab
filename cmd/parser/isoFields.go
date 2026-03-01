@@ -84,5 +84,11 @@ var spec = &iso8583.MessageSpec{
 			Enc:         encoding.ASCII,   // 'ans' karakter seti için
 			Pref:        prefix.ASCII.LLL, // Standart 3 haneli uzunluk belirteci
 		}),
+		63: field.NewString(&field.Spec{
+			Length:      999,
+			Description: "Reserved (private)",
+			Enc:         encoding.ASCII,   // 'ans' karakter seti için
+			Pref:        prefix.ASCII.LLL, // Standart 3 haneli uzunluk belirteci
+		}),
 	},
 }

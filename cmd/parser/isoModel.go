@@ -38,4 +38,5 @@ type MyMessage struct {
 	PinData       *field.String `iso8583:"52"`
 	AddAmounts    *field.String `iso8583:"54"`
 	Priv2         *field.String `iso8583:"61"`
+	ReservedPriv  *field.String `iso8583:"63"`
 }
