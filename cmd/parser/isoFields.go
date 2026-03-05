@@ -72,6 +72,12 @@ var spec = &iso8583.MessageSpec{
 			Enc:         encoding.ASCII,     // Boşluklar ASCII karakterdir
 			Pref:        prefix.ASCII.Fixed, // Sabit 16 karakter
 		}),
+		53: field.NewString(&field.Spec{
+			Length:      16, // 8 değil, 16 yapıyoruz!
+			Description: "Security Related Control Info",
+			Enc:         encoding.ASCII,     // Boşluklar ASCII karakterdir
+			Pref:        prefix.ASCII.Fixed, // Sabit 16 karakter
+		}),
 		54: field.NewString(&field.Spec{
 			Length:      120,
 			Description: "Additional Amounts",
@@ -89,6 +95,18 @@ var spec = &iso8583.MessageSpec{
 			Description: "Reserved (private)",
 			Enc:         encoding.ASCII,   // 'ans' karakter seti için
 			Pref:        prefix.ASCII.LLL, // Standart 3 haneli uzunluk belirteci
+		}),
+		70: field.NewString(&field.Spec{
+			Length:      3, // 8 değil, 16 yapıyoruz!
+			Description: "MW Management Info Code",
+			Enc:         encoding.ASCII,     // Boşluklar ASCII karakterdir
+			Pref:        prefix.ASCII.Fixed, // Sabit 16 karakter
+		}),
+		125: field.NewString(&field.Spec{
+			Length:      999, // 8 değil, 16 yapıyoruz!
+			Description: "Reserved (private)",
+			Enc:         encoding.ASCII,   // Boşluklar ASCII karakterdir
+			Pref:        prefix.ASCII.LLL, // Sabit 16 karakter
 		}),
 	},
 }
