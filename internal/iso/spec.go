@@ -1,4 +1,4 @@
-package main
+package iso
 
 import (
 	"github.com/moov-io/iso8583"
@@ -7,7 +7,7 @@ import (
 	"github.com/moov-io/iso8583/prefix"
 )
 
-var spec = &iso8583.MessageSpec{
+var Spec = &iso8583.MessageSpec{
 	Fields: map[int]field.Field{
 		0:  field.NewString(&field.Spec{Length: 4, Description: "MTI", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		1:  field.NewBitmap(&field.Spec{Description: "Bitmap", Enc: encoding.Binary, Pref: prefix.ASCII.Fixed}),

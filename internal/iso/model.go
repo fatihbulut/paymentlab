@@ -1,4 +1,4 @@
-package main
+package iso
 
 type ISOMessage struct {
 	MTI             string `iso8583:"mti" json:"MTI"`

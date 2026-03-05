@@ -12,6 +12,17 @@
                 "GIN_MODE": "debug",
                 "PORT": "8080"
             }
-        }
+        },
+        {
+            "name": "Debug issuer (TCP)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/issuer",
+            "cwd": "${workspaceFolder}",
+            "env": {
+              "ISSUER_ADDR": "localhost:5001"
+            }
+          }
     ]
 }

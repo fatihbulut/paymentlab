@@ -1,14 +1,14 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/moov-io/iso8583"
+
+	"iso-parser-service/internal/iso"
 )
 
 type ParseRequest struct {
@@ -34,28 +34,18 @@ func main() {
 
 		log.Printf("Gelen ISO Mesajı: %s", req.RawHex)
 
-		rawBytes, err := hex.DecodeString(req.RawHex)
+		msgData, err := iso.ParseHexToMessage(req.RawHex)
 		if err != nil {
-			log.Printf("[HATA] Hex Decode Hatası: %v | Veri: %s", err, req.RawHex)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Hex formatı hatalı"})
-			return
-		}
-
-		message := iso8583.NewMessage(spec)
-		if err := message.Unpack(rawBytes); err != nil {
 			log.Printf("[HATA] ISO Unpack Hatası: %v | Veri: %s", err, req.RawHex)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("ISO Parse Hatası: %v", err)})
 			return
 		}
 
-		msgData := &ISOMessage{}
-		message.Unmarshal(msgData)
-
 		c.JSON(http.StatusOK, msgData)
 	})
 
 	router.POST("/v1/pack", func(c *gin.Context) {
-		var incomingData ISOMessage
+		var incomingData iso.ISOMessage
 
 		if err := c.ShouldBindJSON(&incomingData); err != nil {
 			log.Printf("[HATA] JSON Bind Hatası: %v", err)
@@ -63,25 +53,16 @@ func main() {
 			return
 		}
 
-		message := iso8583.NewMessage(spec)
-		message.MTI(incomingData.MTI)
-		if err := message.Marshal(&incomingData); err != nil {
-			log.Printf("[HATA] ISO Marshal Hatası: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "ISO paketleme hazırlığı başarısız"})
-			return
-		}
-
-		rawBytes, err := message.Pack()
+		hexStr, err := iso.PackMessageToHex(&incomingData)
 		if err != nil {
 			log.Printf("[HATA] ISO Pack Hatası: %v", err)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("ISO Pack Hatası: %v", err)})
-
 		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "Success",
-			"hex":     hex.EncodeToString(rawBytes),
-			"length":  len(rawBytes),
+			"hex":     hexStr,
+			"length":  len(hexStr) / 2,
 			"details": incomingData,
 		})
 	})
