@@ -2,6 +2,7 @@ package acquirer
 
 import (
 	"fmt"
+	"log"
 	"net"
 
 	"iso-parser-service/internal/transport"
@@ -25,6 +26,8 @@ func (c *TCPIssuerClient) SendAndReceive(hexReq string) (string, error) {
 		return "", fmt.Errorf("acquirer: dial issuer at %s: %w", c.addr, err)
 	}
 	defer conn.Close()
+
+	log.Printf("acquirer: connected to issuer at %s", c.addr)
 
 	if err := transport.WriteFrame(conn, hexReq); err != nil {
 		return "", fmt.Errorf("acquirer: write frame: %w", err)
