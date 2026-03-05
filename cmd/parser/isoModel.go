@@ -1,6 +1,6 @@
 package main
 
-type MyMessage struct {
+type ISOMessage struct {
 	MTI             string `iso8583:"mti" json:"MTI"`
 	Bitmap          string `iso8583:"-" json:"Bitmap"`
 	PAN             string `iso8583:"2" json:"PAN"`

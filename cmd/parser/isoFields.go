@@ -24,25 +24,25 @@ var spec = &iso8583.MessageSpec{
 		13: field.NewString(&field.Spec{Length: 4, Description: "Local Transaction Date", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		14: field.NewString(&field.Spec{Length: 4, Description: "Expiration Date", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		15: field.NewString(&field.Spec{
-			Length:      4, // Sabit 4 hane
+			Length:      4,
 			Description: "Date, Settlement",
-			Enc:         encoding.ASCII,     // Genelde ASCII formatındadır
-			Pref:        prefix.ASCII.Fixed, // Sabit uzunluk (Fixed)
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		16: field.NewString(&field.Spec{
-			Length:      4, // Sabit 4 hane
+			Length:      4,
 			Description: "Date, Conversion",
-			Enc:         encoding.ASCII,     // Genelde ASCII formatındadır
-			Pref:        prefix.ASCII.Fixed, // Sabit uzunluk (Fixed)
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		18: field.NewString(&field.Spec{Length: 4, Description: "Merchant Type", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		22: field.NewString(&field.Spec{Length: 3, Description: "Point of Service Entry Mode", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		25: field.NewString(&field.Spec{Length: 2, Description: "Point of Service Condition Code", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		26: field.NewString(&field.Spec{
-			Length:      2, // Sabit 2 hane
+			Length:      2,
 			Description: "Point of Service PIN Capture Code",
-			Enc:         encoding.ASCII,     // Genelde ASCII formatındadır
-			Pref:        prefix.ASCII.Fixed, // Sabit uzunluk (Fixed)
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		32: field.NewString(&field.Spec{Length: 11, Description: "Acquiring Institution ID", Enc: encoding.ASCII, Pref: prefix.ASCII.LL}),
 		35: field.NewString(&field.Spec{Length: 37, Description: "Track 2 Data", Enc: encoding.ASCII, Pref: prefix.ASCII.LL}),
@@ -53,60 +53,60 @@ var spec = &iso8583.MessageSpec{
 		42: field.NewString(&field.Spec{Length: 15, Description: "Card Acceptor ID Code", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		43: field.NewString(&field.Spec{Length: 40, Description: "Card Acceptor Name/Location", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		47: field.NewString(&field.Spec{
-			Length:      999, // Maksimum uzunluk
+			Length:      999,
 			Description: "Additional Data - National",
-			Enc:         encoding.ASCII,   // Genelde ASCII formatındadır
-			Pref:        prefix.ASCII.LLL, // LLLVAR (Başına 3 hane uzunluk gelir)
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.LLL,
 		}),
 		48: field.NewString(&field.Spec{Length: 999, Description: "Additional Data - Private", Enc: encoding.ASCII, Pref: prefix.ASCII.LLL}),
 		49: field.NewString(&field.Spec{Length: 3, Description: "Currency Code, Transaction", Enc: encoding.ASCII, Pref: prefix.ASCII.Fixed}),
 		51: field.NewString(&field.Spec{
-			Length:      3, // Sabit 3 hane
+			Length:      3,
 			Description: "Currency Code, Cardholder Billing",
-			Enc:         encoding.ASCII,     // Genelde ASCII formatındadır
-			Pref:        prefix.ASCII.Fixed, // Sabit uzunluk (Fixed)
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		52: field.NewString(&field.Spec{
-			Length:      16, // 8 değil, 16 yapıyoruz!
+			Length:      16,
 			Description: "PIN Data",
-			Enc:         encoding.ASCII,     // Boşluklar ASCII karakterdir
-			Pref:        prefix.ASCII.Fixed, // Sabit 16 karakter
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		53: field.NewString(&field.Spec{
-			Length:      16, // 8 değil, 16 yapıyoruz!
+			Length:      16,
 			Description: "Security Related Control Info",
-			Enc:         encoding.ASCII,     // Boşluklar ASCII karakterdir
-			Pref:        prefix.ASCII.Fixed, // Sabit 16 karakter
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		54: field.NewString(&field.Spec{
 			Length:      120,
 			Description: "Additional Amounts",
 			Enc:         encoding.ASCII,
-			Pref:        prefix.ASCII.LLL, // Standart LLL'e döndük
+			Pref:        prefix.ASCII.LLL,
 		}),
 		61: field.NewString(&field.Spec{
 			Length:      999,
 			Description: "Terminal Private Data",
-			Enc:         encoding.ASCII,   // 'ans' karakter seti için
-			Pref:        prefix.ASCII.LLL, // Standart 3 haneli uzunluk belirteci
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.LLL,
 		}),
 		63: field.NewString(&field.Spec{
 			Length:      999,
 			Description: "Reserved (private)",
-			Enc:         encoding.ASCII,   // 'ans' karakter seti için
-			Pref:        prefix.ASCII.LLL, // Standart 3 haneli uzunluk belirteci
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.LLL,
 		}),
 		70: field.NewString(&field.Spec{
-			Length:      3, // 8 değil, 16 yapıyoruz!
+			Length:      3,
 			Description: "MW Management Info Code",
-			Enc:         encoding.ASCII,     // Boşluklar ASCII karakterdir
-			Pref:        prefix.ASCII.Fixed, // Sabit 16 karakter
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.Fixed,
 		}),
 		125: field.NewString(&field.Spec{
-			Length:      999, // 8 değil, 16 yapıyoruz!
+			Length:      999,
 			Description: "Reserved (private)",
-			Enc:         encoding.ASCII,   // Boşluklar ASCII karakterdir
-			Pref:        prefix.ASCII.LLL, // Sabit 16 karakter
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.LLL,
 		}),
 	},
 }
