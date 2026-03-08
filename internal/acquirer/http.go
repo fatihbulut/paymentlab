@@ -22,7 +22,7 @@ func NewHTTPServer(client IssuerClient) *HTTPServer {
 func (s *HTTPServer) Router() *gin.Engine {
 	router := gin.Default()
 
-	router.POST("/v1/transactions", s.handleTransaction)
+	router.POST("/v1/transaction", s.handleTransaction)
 
 	return router
 }
