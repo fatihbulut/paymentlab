@@ -6,7 +6,6 @@ import (
 	"io"
 )
 
-// trigger both
 func ReadFrame(r io.Reader) (string, error) {
 	var length uint32
 	if err := binary.Read(r, binary.BigEndian, &length); err != nil {

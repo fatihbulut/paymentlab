@@ -8,7 +8,6 @@ import (
 )
 
 func main() {
-
 	httpPort := os.Getenv("ACQUIRER_PORT")
 	if httpPort == "" {
 		httpPort = "8081"
