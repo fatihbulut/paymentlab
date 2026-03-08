@@ -1,0 +1,40 @@
+name: Deploy Acquirer Service
+
+on:
+  push:
+    branches: [ staging ]
+    paths:
+      - 'cmd/acquirer/**'
+      - 'go.mod'
+      - 'go.sum'
+
+jobs:
+  deploy-acquirer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build Acquirer
+        run: GOOS=linux GOARCH=amd64 go build -o myacquirer ./cmd/acquirer
+
+      - name: Copy to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ vars.ACQUIRER_IP }} 
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }} 
+          source: "myacquirer"
+          target: "/home/ubuntu/acquirer-service/"
+
+      - name: Restart Service
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ vars.ACQUIRER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
+          script: sudo systemctl restart acquirer.service

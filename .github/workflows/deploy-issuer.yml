@@ -1,0 +1,40 @@
+name: Deploy Issuer Service
+
+on:
+  push:
+    branches: [ staging ]
+    paths:
+      - 'cmd/issuer/**'
+      - 'go.mod'
+      - 'go.sum'
+
+jobs:
+  deploy-issuer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build Issuer
+        run: GOOS=linux GOARCH=amd64 go build -o myissuer ./cmd/issuer
+
+      - name: Copy to Server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ vars.ISSUER_IP }} 
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ vars.ISSUER_SSH_PRIVATE_KEY }} 
+          source: "myissuer"
+          target: "/home/ubuntu/issuer-service/"
+
+      - name: Restart Service
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ vars.ISSUER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
+          script: sudo systemctl restart issuer.service

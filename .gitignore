@@ -8,6 +8,12 @@
 *.so
 *.dylib
 
+# Derlenmiş binary dosyaları (Go tarafından üretilenler)
+myacquirer
+myissuer
+cmd/acquirer/myacquirer
+cmd/issuer/myissuer
+
 # Test binary, built with `go test -c`
 *.test
 
