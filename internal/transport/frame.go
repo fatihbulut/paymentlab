@@ -4,7 +4,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"sync"
 )
+
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 0, 4096)
+	},
+}
 
 func ReadFrame(r io.Reader) (string, error) {
 	var length uint32
@@ -16,7 +23,19 @@ func ReadFrame(r io.Reader) (string, error) {
 		return "", fmt.Errorf("empty frame")
 	}
 
-	buf := make([]byte, length)
+	if length > 65536 {
+		return "", fmt.Errorf("frame too large: %d bytes", length)
+	}
+
+	buf := bufferPool.Get().([]byte)
+	defer bufferPool.Put(buf[:0])
+
+	if cap(buf) < int(length) {
+		buf = make([]byte, length)
+	} else {
+		buf = buf[:length]
+	}
+
 	if _, err := io.ReadFull(r, buf); err != nil {
 		return "", err
 	}

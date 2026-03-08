@@ -3,11 +3,29 @@ package iso
 import (
 	"encoding/hex"
 	"fmt"
+	"sync"
 
 	"github.com/moov-io/iso8583"
 )
 
+var hexPool = sync.Pool{
+	New: func() interface{} {
+		return make([]byte, 0, 1024)
+	},
+}
+
 func ParseHexToMessage(hexStr string) (*ISOMessage, error) {
+	if len(hexStr) == 0 {
+		return nil, fmt.Errorf("empty hex string")
+	}
+
+	if len(hexStr)%2 != 0 {
+		return nil, fmt.Errorf("invalid hex length: must be even")
+	}
+
+	buf := hexPool.Get().([]byte)
+	defer hexPool.Put(buf[:0])
+
 	rawBytes, err := hex.DecodeString(hexStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid hex: %w", err)
@@ -23,8 +41,6 @@ func ParseHexToMessage(hexStr string) (*ISOMessage, error) {
 		return nil, fmt.Errorf("unmarshal ISOMessage: %w", err)
 	}
 
-	// MTI alanı bazı durumlarda struct'a otomatik taşınmadığı için,
-	// message nesnesinden doğrudan okuyup modele set ediyoruz.
 	if mti, err := msg.GetMTI(); err == nil {
 		data.MTI = mti
 	}
@@ -49,5 +65,9 @@ func PackMessageToHex(m *ISOMessage) (string, error) {
 		return "", fmt.Errorf("pack ISO8583 message: %w", err)
 	}
 
-	return hex.EncodeToString(rawBytes), nil
+	buf := hexPool.Get().([]byte)
+	defer hexPool.Put(buf[:0])
+
+	encoded := hex.EncodeToString(rawBytes)
+	return encoded, nil
 }
