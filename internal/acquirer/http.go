@@ -21,7 +21,7 @@ func NewHTTPServer(client IssuerClient) *HTTPServer {
 // Router constructs a gin.Engine with all acquirer HTTP routes registered.
 func (s *HTTPServer) Router() *gin.Engine {
 	router := gin.Default()
-
+	//endpoint change
 	router.POST("/v1/transaction", s.handleTransaction)
 
 	return router

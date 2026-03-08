@@ -5,6 +5,9 @@ on:
     branches: [ staging ]
     paths:
       - 'cmd/issuer/**'
+      - 'internal/issuer/**' 
+      - 'internal/iso/**'      
+      - 'internal/transport/**'
       - 'go.mod'
       - 'go.sum'
 
