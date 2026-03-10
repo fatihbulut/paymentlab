@@ -1,13 +1,21 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
 	"iso-parser-service/internal/acquirer"
+	"iso-parser-service/internal/otel"
 )
 
 func main() {
+	tp, err := otel.InitTracer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tp.Shutdown(context.Background())
+
 	httpPort := os.Getenv("ACQUIRER_PORT")
 	if httpPort == "" {
 		httpPort = "8081"

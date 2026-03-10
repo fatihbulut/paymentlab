@@ -21,7 +21,28 @@
             "program": "${workspaceFolder}/cmd/issuer",
             "cwd": "${workspaceFolder}",
             "env": {
-              "ISSUER_ADDR": "localhost:5001"
+              "ISSUER_ADDR": "localhost:5001",
+              "OTEL_SERVICE_NAME": "issuer",
+              "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp",
+              "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+              "OTEL_RESOURCE_ATTRIBUTES": "service.namespace=paymentlab,deployment.environment=test",
+              "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic MTU1Mjc1OTpnbGNfZXlKdklqb2lNVFk1TXpVMU5pSXNJbTRpT2lKbmNtRndhR0Z1WVMxdmRHVnNMV1JwY21WamRDMTBiMnRsYmlJc0ltc2lPaUpsT0RKUVJqQTFPVTh6VkRsak9EUlJNa0pIVmtWd1ZYQWlMQ0p0SWpwN0luSWlPaUp3Y205a0xXVjFMWGRsYzNRdE1pSjlmUT09"
+            }
+          },
+          {
+            "name": "Debug Acquirer (Http)",
+            "type": "go",
+            "request": "launch",
+            "mode": "debug",
+            "program": "${workspaceFolder}/cmd/acquirer",
+            "cwd": "${workspaceFolder}",
+            "env": {
+              "ISSUER_ADDR": "localhost:5001",
+              "OTEL_SERVICE_NAME": "acquirer",
+              "OTEL_EXPORTER_OTLP_ENDPOINT": "https://otlp-gateway-prod-eu-west-2.grafana.net/otlp",
+              "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+              "OTEL_RESOURCE_ATTRIBUTES": "service.namespace=paymentlab,deployment.environment=test",
+              "OTEL_EXPORTER_OTLP_HEADERS": "Authorization=Basic MTU1Mjc1OTpnbGNfZXlKdklqb2lNVFk1TXpVMU5pSXNJbTRpT2lKbmNtRndhR0Z1WVMxdmRHVnNMV1JwY21WamRDMTBiMnRsYmlJc0ltc2lPaUpsT0RKUVJqQTFPVTh6VkRsak9EUlJNa0pIVmtWd1ZYQWlMQ0p0SWpwN0luSWlPaUp3Y205a0xXVjFMWGRsYzNRdE1pSjlmUT09"
             }
           }
     ]

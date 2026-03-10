@@ -2,10 +2,10 @@ package acquirer
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"iso-parser-service/internal/iso"
 )
@@ -20,8 +20,14 @@ func NewHTTPServer(client IssuerClient) *HTTPServer {
 
 // Router constructs a gin.Engine with all acquirer HTTP routes registered.
 func (s *HTTPServer) Router() *gin.Engine {
-	router := gin.Default()
-	//endpoint change
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(otelgin.Middleware("acquirer"))
+
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
 	router.POST("/v1/transaction", s.handleTransaction)
 
 	return router
@@ -31,28 +37,24 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	var req iso.ISOMessage
 
 	if err := c.ShouldBindJSON(&req); err != nil {
-		log.Printf("acquirer: JSON bind error: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "geçersiz ISOMessage JSON"})
 		return
 	}
 
 	hexReq, err := iso.PackMessageToHex(&req)
 	if err != nil {
-		log.Printf("acquirer: pack request error: %v", err)
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("ISO pack hatası: %v", err)})
 		return
 	}
 
-	hexResp, err := s.issuerClient.SendAndReceive(hexReq)
+	hexResp, err := s.issuerClient.SendAndReceive(c.Request.Context(), hexReq)
 	if err != nil {
-		log.Printf("acquirer: send to issuer error: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer ile iletişim hatası: %v", err)})
 		return
 	}
 
 	respMsg, err := iso.ParseHexToMessage(hexResp)
 	if err != nil {
-		log.Printf("acquirer: parse issuer response error: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer yanıtı parse hatası: %v", err)})
 		return
 	}

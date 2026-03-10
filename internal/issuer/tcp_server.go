@@ -1,11 +1,16 @@
 package issuer
 
 import (
+	"context"
 	"io"
 	"log"
 	"net"
 
 	"iso-parser-service/internal/transport"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // ServeTCP starts a TCP server on the given address and uses the provided
@@ -30,32 +35,60 @@ func ServeTCP(addr string, svc *Service) error {
 func handleConn(conn net.Conn, svc *Service) {
 	defer conn.Close()
 	remote := conn.RemoteAddr().String()
-	log.Printf("issuer: accepted connection from %s", remote)
+
+	tracer := otel.Tracer("issuer")
 
 	for {
+		ctx, span := tracer.Start(context.Background(), "issuer.handle_message")
+		span.SetAttributes(
+			attribute.String("remote.addr", remote),
+			attribute.String("protocol", "tcp"),
+		)
+
 		hexReq, err := transport.ReadFrame(conn)
 		if err != nil {
-			if err == io.EOF {
-				log.Printf("issuer: connection from %s closed", remote)
-			} else {
+			if err != io.EOF {
 				log.Printf("issuer: read error from %s: %v", remote, err)
+				span.RecordError(err)
+				span.SetStatus(codes.Error, "read frame error")
 			}
+			span.End()
 			return
 		}
 
-		log.Printf("issuer: received hex request from %s: %s", remote, hexReq)
+		span.SetAttributes(attribute.Int("request.length", len(hexReq)))
 
-		hexResp, _, err := svc.HandleHex(hexReq)
+		hexResp, respMsg, err := svc.HandleHex(hexReq)
 		if err != nil {
 			log.Printf("issuer: handle error for %s: %v", remote, err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "handle message error")
+			span.End()
 			return
 		}
 
-		log.Printf("issuer: sending hex response to %s: %s", remote, hexResp)
+		if respMsg != nil {
+			span.SetAttributes(
+				attribute.String("iso.mti", respMsg.MTI),
+				attribute.String("iso.response_code", respMsg.RespCode),
+			)
+			if respMsg.STAN != "" {
+				span.SetAttributes(attribute.String("iso.stan", respMsg.STAN))
+			}
+		}
+
+		span.SetAttributes(attribute.Int("response.length", len(hexResp)))
 
 		if err := transport.WriteFrame(conn, hexResp); err != nil {
 			log.Printf("issuer: write error to %s: %v", remote, err)
+			span.RecordError(err)
+			span.SetStatus(codes.Error, "write frame error")
+			span.End()
 			return
 		}
+
+		span.SetStatus(codes.Ok, "success")
+		span.End()
+		ctx.Done()
 	}
 }
