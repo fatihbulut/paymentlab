@@ -27,6 +27,11 @@ func (s *HTTPServer) Router() *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(otelgin.Middleware("acquirer"))
 
+	// Serve UI
+	router.GET("/", func(c *gin.Context) {
+		c.File("web/index.html")
+	})
+
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
