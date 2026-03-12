@@ -10,11 +10,17 @@ import (
 )
 
 func main() {
-	tp, err := otel.InitTracer()
+	ctx := context.Background()
+
+	shutdown, err := otel.InitOTel(ctx, "acquirer")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to initialize OpenTelemetry: %v", err)
 	}
-	defer tp.Shutdown(context.Background())
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Printf("failed to shutdown OpenTelemetry: %v", err)
+		}
+	}()
 
 	httpPort := os.Getenv("ACQUIRER_PORT")
 	if httpPort == "" {

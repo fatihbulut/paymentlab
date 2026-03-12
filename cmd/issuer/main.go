@@ -10,11 +10,17 @@ import (
 )
 
 func main() {
-	tp, err := otel.InitTracer()
+	ctx := context.Background()
+
+	shutdown, err := otel.InitOTel(ctx, "issuer")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to initialize OpenTelemetry: %v", err)
 	}
-	defer tp.Shutdown(context.Background())
+	defer func() {
+		if err := shutdown(ctx); err != nil {
+			log.Printf("failed to shutdown OpenTelemetry: %v", err)
+		}
+	}()
 
 	addr := os.Getenv("ISSUER_ADDR")
 	if addr == "" {

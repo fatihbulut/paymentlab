@@ -5,7 +5,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"time"
 
+	otelmetrics "iso-parser-service/internal/otel"
 	"iso-parser-service/internal/transport"
 
 	"go.opentelemetry.io/otel"
@@ -39,6 +41,7 @@ func handleConn(conn net.Conn, svc *Service) {
 	tracer := otel.Tracer("issuer")
 
 	for {
+		start := time.Now()
 		ctx, span := tracer.Start(context.Background(), "issuer.handle_message")
 		span.SetAttributes(
 			attribute.String("remote.addr", remote),
@@ -75,6 +78,10 @@ func handleConn(conn net.Conn, svc *Service) {
 			if respMsg.STAN != "" {
 				span.SetAttributes(attribute.String("iso.stan", respMsg.STAN))
 			}
+
+			// Record metrics
+			duration := time.Since(start)
+			otelmetrics.RecordTransactionWithService(ctx, "issuer", respMsg.MTI, respMsg.RespCode, duration)
 		}
 
 		span.SetAttributes(attribute.Int("response.length", len(hexResp)))

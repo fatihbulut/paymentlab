@@ -3,11 +3,13 @@ package acquirer
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"iso-parser-service/internal/iso"
+	otelmetrics "iso-parser-service/internal/otel"
 )
 
 type HTTPServer struct {
@@ -34,6 +36,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 }
 
 func (s *HTTPServer) handleTransaction(c *gin.Context) {
+	start := time.Now()
 	var req iso.ISOMessage
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,6 +61,10 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer yanıtı parse hatası: %v", err)})
 		return
 	}
+
+	// Record metrics
+	duration := time.Since(start)
+	otelmetrics.RecordTransactionWithService(c.Request.Context(), "acquirer", respMsg.MTI, respMsg.RespCode, duration)
 
 	c.JSON(http.StatusOK, gin.H{
 		"request_hex":  hexReq,
