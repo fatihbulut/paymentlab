@@ -32,6 +32,16 @@ func (s *HTTPServer) Router() *gin.Engine {
 		c.File("web/index.html")
 	})
 
+	// Serve spec.json (Single Source of Truth)
+	router.GET("/spec.json", func(c *gin.Context) {
+		c.File("web/spec.json")
+	})
+
+	// Serve ISO engine
+	router.GET("/iso-engine.js", func(c *gin.Context) {
+		c.File("web/iso-engine.js")
+	})
+
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})

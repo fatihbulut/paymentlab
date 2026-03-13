@@ -6,10 +6,17 @@ import (
 	"os"
 
 	"iso-parser-service/internal/acquirer"
+	"iso-parser-service/internal/iso"
 	"iso-parser-service/internal/otel"
 )
 
 func main() {
+	// Load ISO spec from JSON (Single Source of Truth)
+	if err := iso.InitSpec("web/spec.json"); err != nil {
+		log.Fatalf("failed to load ISO spec: %v", err)
+	}
+	log.Println("ISO spec loaded from web/spec.json")
+
 	ctx := context.Background()
 
 	shutdown, err := otel.InitOTel(ctx, "acquirer")

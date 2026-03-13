@@ -1,176 +1,425 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ISO 8583 Transaction Simulator</title>
+    <title>ISO 8583 Payment Simulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            850: '#1a202e',
-                        }
-                    }
-                }
-            }
+    <script src="/iso-engine.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
         }
-    </script>
+        .scrollable-content {
+            overflow-y: auto;
+        }
+        .scrollable-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollable-content::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 text-gray-100 min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">
-                ISO 8583 Transaction Simulator
-            </h1>
-            <p class="text-gray-400 mt-2">Test payment transactions with real-time hex visualization</p>
-        </div>
+<body class="bg-[#0c0c0c] text-white min-h-screen overflow-hidden">
+    <!-- Header -->
+    <header class="px-6 py-3 border-b border-gray-800/50 bg-[#111]/80 backdrop-blur-sm">
+        <h1 class="text-sm text-gray-400">ISO 8583 Payment Simulator</h1>
+    </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Left Panel - Payment Form -->
-            <div class="space-y-6">
-                <!-- Payment Card -->
-                <div class="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-2xl p-8 shadow-2xl">
-                    <div class="flex justify-between items-start mb-8">
-                        <div class="text-white">
-                            <div class="text-sm opacity-75">Payment Card</div>
-                            <div class="text-2xl font-bold mt-1">VISA</div>
-                        </div>
-                        <svg class="w-12 h-12 text-white opacity-75" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-                        </svg>
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <div class="text-white text-2xl font-mono tracking-wider" id="cardDisplay">
-                                •••• •••• •••• ••••
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 text-white">
-                            <div>
-                                <div class="text-xs opacity-75">CARD HOLDER</div>
-                                <div class="font-semibold">TEST USER</div>
-                            </div>
-                            <div>
-                                <div class="text-xs opacity-75">EXPIRES</div>
-                                <div class="font-semibold">12/28</div>
-                            </div>
-                        </div>
-                    </div>
+    <!-- Main Dashboard Container -->
+    <div class="p-6 flex gap-6 items-stretch overflow-hidden" style="height: calc(100vh - 60px);">
+        
+        <!-- Left Column: Acquirer Console -->
+        <div class="w-[280px] flex-shrink-0">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                <!-- Header -->
+                <div class="mb-5 pb-3 border-b border-gray-800/50">
+                    <h2 class="text-sm text-gray-300">Acquirer</h2>
                 </div>
 
-                <!-- Transaction Form -->
-                <div class="bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
-                    <h2 class="text-xl font-semibold mb-6 text-indigo-400">Transaction Details</h2>
-                    <form id="transactionForm" class="space-y-4">
-                        <!-- PAN -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">
-                                Card Number (PAN)
-                            </label>
-                            <input 
-                                type="text" 
-                                id="pan" 
-                                maxlength="19"
-                                placeholder="4506 1234 5678 9012"
-                                class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500 font-mono"
-                                required
-                            >
-                        </div>
-
+                <!-- Form -->
+                <form id="transactionForm" class="flex-1 flex flex-col">
+                    <div class="flex-1 space-y-4">
                         <!-- Amount -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">
-                                Amount
-                            </label>
+                        <div class="space-y-1.5">
+                            <label for="amount" class="text-xs text-gray-400 block">Amount (TRY)</label>
                             <div class="relative">
                                 <input 
-                                    type="number" 
+                                    type="text" 
                                     id="amount" 
-                                    step="0.01"
-                                    placeholder="100.00"
-                                    class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white placeholder-gray-500"
-                                    required
-                                >
+                                    value="150.00"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 text-white h-9 text-sm rounded-md px-3 pr-8 outline-none font-mono"
+                                    placeholder="0.00"
+                                />
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                    <span class="text-gray-400" id="currencySymbol">TRY</span>
+                                    <span class="text-xs text-gray-500">₺</span>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Currency -->
-                        <div>
-                            <label class="block text-sm font-medium text-gray-300 mb-2">
-                                Currency
-                            </label>
-                            <select 
-                                id="currency"
-                                class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-white"
-                            >
-                                <option value="949">TRY - Turkish Lira</option>
-                                <option value="840">USD - US Dollar</option>
-                                <option value="978">EUR - Euro</option>
-                            </select>
+                        <!-- Card Number -->
+                        <div class="space-y-1.5">
+                            <label for="pan" class="text-xs text-gray-400 block">Card No</label>
+                            <input 
+                                type="text" 
+                                id="pan" 
+                                value="4532 1488 0343 6467"
+                                maxlength="19"
+                                class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 text-white h-9 text-sm rounded-md px-3 outline-none font-mono"
+                                placeholder="0000 0000 0000 0000"
+                            />
                         </div>
 
-                        <!-- Submit Button -->
-                        <button 
-                            type="submit"
-                            class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-4 px-6 rounded-lg shadow-lg transform transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                        >
-                            <span class="flex items-center justify-center">
-                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                </svg>
-                                Process Payment
-                            </span>
-                        </button>
-                    </form>
+                        <!-- Channel Segmented Control -->
+                        <div class="space-y-1.5">
+                            <label class="text-xs text-gray-400 block">Channel</label>
+                            <div class="bg-[#1a1a1a] border border-gray-700/50 rounded-md p-1 flex gap-1">
+                                <button
+                                    type="button"
+                                    id="channel-pos"
+                                    onclick="selectChannel('POS')"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white"
+                                >
+                                    POS
+                                </button>
+                                <button
+                                    type="button"
+                                    id="channel-atm"
+                                    onclick="selectChannel('ATM')"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
+                                >
+                                    ATM
+                                </button>
+                                <button
+                                    type="button"
+                                    id="channel-web"
+                                    onclick="selectChannel('Web')"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
+                                >
+                                    Web
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario Selector -->
+                    <div class="bg-[#0a0a0a] border border-purple-500/30 rounded-md p-3 space-y-1.5 mt-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="12" cy="12" r="1"></circle>
+                            </svg>
+                            <h3 class="text-xs text-purple-400">Scenario Selector</h3>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label for="scenario" class="text-xs text-gray-400 block">Transaction Outcome</label>
+                            <select 
+                                id="scenario"
+                                class="w-full bg-[#1a1a1a] border border-purple-500/30 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 text-white h-9 text-xs rounded-md px-3 outline-none"
+                            >
+                                <option value="00">00 - Approved</option>
+                                <option value="51">51 - Insufficient Funds</option>
+                                <option value="14">14 - Invalid Card</option>
+                                <option value="96">96 - System Error</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Process Button -->
+                    <button 
+                        type="submit"
+                        class="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-10 text-sm mt-4 rounded-md transition-colors"
+                    >
+                        Process
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Middle Column: ISO 8583 Visualizer -->
+        <div class="flex-1">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                <!-- Header -->
+                <div class="mb-4 pb-3 border-b border-gray-800/50">
+                    <h2 class="text-sm text-gray-300">ISO 8583 Message</h2>
+                </div>
+
+                <div class="flex-1 flex flex-col gap-3 min-h-0">
+                    <!-- Request Section -->
+                    <div id="requestSection" class="flex flex-col" style="flex: 1 1 50%; min-height: 0;">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xs text-emerald-400">Request (0100)</h3>
+                            <div class="flex gap-0.5 border-b border-gray-800/50">
+                                <button type="button" onclick="switchRequestTab('parsed')" id="req-tab-parsed" class="px-3 py-1.5 text-xs transition-all border-b-2 border-emerald-500 text-emerald-400">
+                                    Parsed Fields
+                                </button>
+                                <button type="button" onclick="switchRequestTab('raw')" id="req-tab-raw" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
+                                    Raw Data
+                                </button>
+                                <button type="button" onclick="switchRequestTab('json')" id="req-tab-json" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
+                                    JSON
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-[#0a0a0a] border border-gray-800/50 rounded-md overflow-hidden">
+                            <!-- Parsed Fields Tab -->
+                            <div id="req-content-parsed" class="h-full overflow-y-auto scrollable-content">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-[#141414] sticky top-0 border-b border-gray-800/50">
+                                        <tr>
+                                            <th class="text-left px-2 py-2 text-gray-400 w-12">DE</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Field Name</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="font-mono">
+                                        <!-- Bitmap Rows -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-emerald-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Primary Bitmap</td>
+                                            <td class="px-2 py-2 text-emerald-400 font-mono text-xs break-all" id="requestPrimaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-emerald-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Secondary Bitmap</td>
+                                            <td class="px-2 py-2 text-emerald-400 font-mono text-xs" id="requestSecondaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-emerald-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Active Fields</td>
+                                            <td class="px-2 py-2 text-emerald-400 font-mono text-xs break-all" id="requestActiveFields">-</td>
+                                        </tr>
+                                        
+                                        <!-- Separator Row -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td colspan="3" class="px-2 py-1 text-center text-gray-600 text-xs">─ Data Elements ─</td>
+                                        </tr>
+                                        
+                                        <!-- Actual Fields -->
+                                        <tbody id="requestFields">
+                                            <tr class="border-b border-gray-800/30">
+                                                <td colspan="3" class="px-2 py-2 text-center text-gray-500">No data</td>
+                                            </tr>
+                                        </tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Raw Data Tab -->
+                            <div id="req-content-raw" class="h-full overflow-auto p-3 hidden">
+                                <!-- Hex Section -->
+                                <div class="mb-4">
+                                    <h4 class="text-xs text-emerald-400 mb-2">Hex Format</h4>
+                                    <div class="text-cyan-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="requestHex">
+                                        No data
+                                    </div>
+                                </div>
+                                
+                                <!-- ASCII Section -->
+                                <div>
+                                    <h4 class="text-xs text-emerald-400 mb-2">ASCII Format (MTI + Bitmap + Data)</h4>
+                                    <div class="text-cyan-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="requestAscii">
+                                        No data
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- JSON Tab -->
+                            <div id="req-content-json" class="h-full overflow-auto p-3 hidden">
+                                <pre class="text-cyan-400/90 font-mono text-xs leading-relaxed" id="requestJson">No data</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resizable Divider -->
+                    <div id="resizer" class="h-2 bg-gray-800/30 hover:bg-emerald-500/20 cursor-ns-resize transition-colors flex items-center justify-center group">
+                        <div class="w-8 h-0.5 bg-gray-700 group-hover:bg-emerald-500/50 rounded transition-colors"></div>
+                    </div>
+
+                    <!-- Response Section -->
+                    <div id="responseSection" class="flex flex-col" style="flex: 1 1 50%; min-height: 0;">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xs text-purple-400">Response (0110)</h3>
+                            <div class="flex gap-0.5 border-b border-gray-800/50">
+                                <button type="button" onclick="switchResponseTab('parsed')" id="res-tab-parsed" class="px-3 py-1.5 text-xs transition-all border-b-2 border-purple-500 text-purple-400">
+                                    Parsed Fields
+                                </button>
+                                <button type="button" onclick="switchResponseTab('raw')" id="res-tab-raw" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
+                                    Raw Data
+                                </button>
+                                <button type="button" onclick="switchResponseTab('json')" id="res-tab-json" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
+                                    JSON
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-[#0a0a0a] border border-gray-800/50 rounded-md overflow-hidden">
+                            <!-- Parsed Fields Tab -->
+                            <div id="res-content-parsed" class="h-full overflow-y-auto scrollable-content">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-[#141414] sticky top-0 border-b border-gray-800/50">
+                                        <tr>
+                                            <th class="text-left px-2 py-2 text-gray-400 w-12">DE</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Field Name</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="font-mono">
+                                        <!-- Bitmap Rows -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-purple-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Primary Bitmap</td>
+                                            <td class="px-2 py-2 text-purple-400 font-mono text-xs break-all" id="responsePrimaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-purple-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Secondary Bitmap</td>
+                                            <td class="px-2 py-2 text-purple-400 font-mono text-xs" id="responseSecondaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-purple-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Active Fields</td>
+                                            <td class="px-2 py-2 text-purple-400 font-mono text-xs break-all" id="responseActiveFields">-</td>
+                                        </tr>
+                                        
+                                        <!-- Separator Row -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td colspan="3" class="px-2 py-1 text-center text-gray-600 text-xs">─ Data Elements ─</td>
+                                        </tr>
+                                        
+                                        <!-- Actual Fields -->
+                                        <tbody id="responseFields">
+                                            <tr class="border-b border-gray-800/30">
+                                                <td colspan="3" class="px-2 py-2 text-center text-gray-500">No data</td>
+                                            </tr>
+                                        </tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Raw Data Tab -->
+                            <div id="res-content-raw" class="h-full overflow-auto p-3 hidden">
+                                <!-- Hex Section -->
+                                <div class="mb-4">
+                                    <h4 class="text-xs text-purple-400 mb-2">Hex Format</h4>
+                                    <div class="text-purple-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="responseHex">
+                                        No data
+                                    </div>
+                                </div>
+                                
+                                <!-- ASCII Section -->
+                                <div>
+                                    <h4 class="text-xs text-purple-400 mb-2">ASCII Format (MTI + Bitmap + Data)</h4>
+                                    <div class="text-purple-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="responseAscii">
+                                        No data
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- JSON Tab -->
+                            <div id="res-content-json" class="h-full overflow-auto p-3 hidden">
+                                <pre class="text-purple-400/90 font-mono text-xs leading-relaxed" id="responseJson">No data</pre>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Right Panel - Response Display -->
-            <div class="space-y-6">
-                <!-- Status Card -->
-                <div id="statusCard" class="hidden bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-gray-300">Transaction Status</h3>
-                        <div id="statusBadge"></div>
-                    </div>
-                    <div id="statusDetails" class="space-y-3 text-sm"></div>
+        <!-- Right Column: Issuer Engine -->
+        <div class="w-[340px] flex-shrink-0">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                <!-- Header -->
+                <div class="mb-4 pb-3 border-b border-gray-800/50">
+                    <h2 class="text-sm text-gray-300">Issuer Engine</h2>
                 </div>
 
-                <!-- Request Hex -->
-                <div class="bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-indigo-400">Request (Hex)</h3>
-                        <button onclick="copyToClipboard('requestHex')" class="text-gray-400 hover:text-indigo-400 transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                            </svg>
-                        </button>
+                <div class="flex-1 flex flex-col gap-4">
+                    <!-- Decoded Data -->
+                    <div>
+                        <h3 class="text-xs text-gray-400 mb-2">Decoded</h3>
+                        <div class="bg-[#0a0a0a] border border-gray-800/50 rounded-md p-3 space-y-1.5">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">MTI</span>
+                                <span class="text-gray-300 font-mono" id="decodedMTI">0100</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Card Scheme</span>
+                                <span class="text-gray-300 font-mono" id="decodedScheme">VISA</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Amount</span>
+                                <span class="text-gray-300 font-mono" id="decodedAmount">150.00</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Channel</span>
+                                <span class="text-gray-300 font-mono" id="decodedChannel">POS</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Terminal</span>
+                                <span class="text-gray-300 font-mono" id="decodedTerminal">TERM0001</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-emerald-400 break-all overflow-x-auto max-h-48 overflow-y-auto border border-slate-700">
-                        <code id="requestHex" class="whitespace-pre-wrap">Waiting for transaction...</code>
-                    </div>
-                </div>
 
-                <!-- Response Hex -->
-                <div class="bg-slate-800 rounded-xl p-6 shadow-xl border border-slate-700">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-lg font-semibold text-emerald-400">Response (Hex)</h3>
-                        <button onclick="copyToClipboard('responseHex')" class="text-gray-400 hover:text-emerald-400 transition">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
-                            </svg>
-                        </button>
+                    <!-- Status Checklist -->
+                    <div>
+                        <h3 class="text-xs text-gray-400 mb-2">Checks</h3>
+                        <div class="bg-[#0a0a0a] border border-gray-800/50 rounded-md p-3 space-y-2">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg id="checkCardIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Card Check</span>
+                                </div>
+                                <div id="checkCardText" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60">
+                                    PENDING
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg id="checkBalanceIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Balance</span>
+                                </div>
+                                <div id="checkBalanceText" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60">
+                                    PENDING
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg id="checkFraudIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Fraud</span>
+                                </div>
+                                <div id="checkFraudText" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60">
+                                    PENDING
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="bg-slate-900 rounded-lg p-4 font-mono text-xs text-emerald-400 break-all overflow-x-auto max-h-48 overflow-y-auto border border-slate-700">
-                        <code id="responseHex" class="whitespace-pre-wrap">Waiting for response...</code>
+
+                    <!-- Result Code -->
+                    <div class="flex-1 flex flex-col">
+                        <h3 class="text-xs text-gray-400 mb-2">Result</h3>
+                        <div id="resultCard" class="flex-1 rounded-md border-2 border-emerald-500 bg-emerald-500/5 flex items-center justify-center transition-all">
+                            <div class="text-center">
+                                <div id="responseCodeDisplay" class="text-5xl mb-1 text-emerald-400">00</div>
+                                <div id="responseCodeDesc" class="text-xs text-gray-400">Approved</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -178,38 +427,132 @@
     </div>
 
     <script>
-        // Format card number display
-        document.getElementById('pan').addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\s/g, '');
-            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
-            e.target.value = formattedValue;
-            
-            // Update card display
-            const cardDisplay = document.getElementById('cardDisplay');
-            if (value.length > 0) {
-                const masked = value.substring(0, 4) + ' •••• •••• ' + value.substring(value.length - 4);
-                cardDisplay.textContent = masked;
-            } else {
-                cardDisplay.textContent = '•••• •••• •••• ••••';
+        let currentMessage = {};
+        let currentSTAN = '';
+        let activeRequestTab = 'parsed';
+        let activeResponseTab = 'parsed';
+        let selectedChannel = 'POS';
+        let isProcessing = false;
+
+        // Initialize ISO Engine when page loads
+        window.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('Initializing ISO Engine...');
+                await isoEngine.init();
+                console.log('ISO Engine ready:', isoEngine.ready);
+                updatePreview();
+            } catch (error) {
+                console.error('Failed to initialize ISO Engine:', error);
+                alert('Failed to load ISO Engine. Please refresh the page.');
             }
         });
 
-        // Update currency symbol
-        document.getElementById('currency').addEventListener('change', function(e) {
-            const currencyMap = {
-                '949': 'TRY',
-                '840': 'USD',
-                '978': 'EUR'
-            };
-            document.getElementById('currencySymbol').textContent = currencyMap[e.target.value];
-        });
+        // Channel selection
+        function selectChannel(channel) {
+            selectedChannel = channel;
+            ['POS', 'ATM', 'Web'].forEach(ch => {
+                const btn = document.getElementById('channel-' + ch.toLowerCase());
+                if (ch === channel) {
+                    btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white';
+                } else {
+                    btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300';
+                }
+            });
+            document.getElementById('decodedChannel').textContent = channel;
+            updatePreview();
+        }
 
-        // Generate random STAN
+        // Request tab switching
+        function switchRequestTab(tabName) {
+            activeRequestTab = tabName;
+            
+            ['parsed', 'raw', 'json'].forEach(tab => {
+                const btn = document.getElementById('req-tab-' + tab);
+                const content = document.getElementById('req-content-' + tab);
+                
+                if (tab === tabName) {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-emerald-500 text-emerald-400';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        // Response tab switching
+        function switchResponseTab(tabName) {
+            activeResponseTab = tabName;
+            
+            ['parsed', 'raw', 'json'].forEach(tab => {
+                const btn = document.getElementById('res-tab-' + tab);
+                const content = document.getElementById('res-content-' + tab);
+                
+                if (tab === tabName) {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-purple-500 text-purple-400';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        // Resizable divider
+        (function() {
+            const resizer = document.getElementById('resizer');
+            const requestSection = document.getElementById('requestSection');
+            const responseSection = document.getElementById('responseSection');
+            let isResizing = false;
+            let startY = 0;
+            let startRequestFlex = 0;
+            let startResponseFlex = 0;
+
+            resizer.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                startY = e.clientY;
+                
+                const requestStyle = window.getComputedStyle(requestSection);
+                const responseStyle = window.getComputedStyle(responseSection);
+                startRequestFlex = parseFloat(requestStyle.flexGrow);
+                startResponseFlex = parseFloat(responseStyle.flexGrow);
+                
+                document.body.style.cursor = 'ns-resize';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                
+                const deltaY = e.clientY - startY;
+                const container = requestSection.parentElement;
+                const containerHeight = container.clientHeight;
+                const deltaFlex = (deltaY / containerHeight) * 2;
+                
+                let newRequestFlex = startRequestFlex + deltaFlex;
+                let newResponseFlex = startResponseFlex - deltaFlex;
+                
+                if (newRequestFlex < 0.2) newRequestFlex = 0.2;
+                if (newResponseFlex < 0.2) newResponseFlex = 0.2;
+                
+                requestSection.style.flex = `${newRequestFlex} 1 0%`;
+                responseSection.style.flex = `${newResponseFlex} 1 0%`;
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                }
+            });
+        })();
+
+        // Generate STAN
         function generateSTAN() {
             return Math.floor(100000 + Math.random() * 900000).toString();
         }
 
-        // Get current date/time in ISO 8583 format
+        // Get local date (MMDD)
         function getLocalDate() {
             const now = new Date();
             const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -217,6 +560,7 @@
             return month + day;
         }
 
+        // Get local time (HHmmss)
         function getLocalTime() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -225,47 +569,333 @@
             return hours + minutes + seconds;
         }
 
-        // Response code mapping
-        const responseCodeMap = {
-            '00': 'Approved',
-            '05': 'Do not honor',
-            '14': 'Invalid card number',
-            '51': 'Insufficient funds',
-            '54': 'Expired card',
-            '55': 'Incorrect PIN',
-            '57': 'Transaction not permitted',
-            '58': 'Transaction not permitted to terminal',
-            '61': 'Exceeds withdrawal limit',
-            '65': 'Exceeds withdrawal frequency',
-            '91': 'Issuer or switch inoperative',
-            '96': 'System malfunction'
-        };
+        // Build message
+        function buildMessage() {
+            if (!currentSTAN) {
+                currentSTAN = generateSTAN();
+            }
+
+            const pan = document.getElementById('pan').value.replace(/\s/g, '');
+            const amount = document.getElementById('amount').value;
+            const amountPadded = (parseFloat(amount || 0) * 100).toString().padStart(12, '0');
+
+            let posEntryMode = '051';
+            if (selectedChannel === 'ATM') posEntryMode = '021';
+            else if (selectedChannel === 'Web') posEntryMode = '811';
+
+            // Field 7: Transmission Date & Time (MMDDHHmmss)
+            const transDateTime = getLocalDate() + getLocalTime();
+
+            return {
+                'MTI': '0100',
+                '2': pan, // llvar - length otomatik
+                '3': '000000', // 6 karakter fixed
+                '4': amountPadded, // 12 karakter, zero padded
+                '7': transDateTime, // 10 karakter (MMDDHHmmss)
+                '11': currentSTAN.padStart(6, '0'), // 6 karakter, zero padded
+                '12': getLocalTime(), // 6 karakter (HHmmss)
+                '13': getLocalDate(), // 4 karakter (MMDD)
+                '22': posEntryMode, // 3 karakter fixed
+                '25': '00', // 2 karakter fixed
+                '41': 'TERM0001', // 8 karakter fixed
+                '42': 'MERCH0001234567', // 15 karakter fixed
+                '49': '949' // 3 karakter fixed
+            };
+        }
+
+        // Update real-time preview
+        function updatePreview() {
+            if (!isoEngine.ready) {
+                return;
+            }
+
+            const message = buildMessage();
+            currentMessage = message;
+
+            try {
+                // Generate hex
+                const hexMessage = isoEngine.encode(message);
+                document.getElementById('requestHex').textContent = hexMessage;
+                
+                // Generate ASCII format
+                const asciiMessage = isoEngine.hexToAscii(hexMessage);
+                document.getElementById('requestAscii').textContent = asciiMessage;
+
+                // Parse bitmap from hex
+                const bitmapInfo = isoEngine.extractBitmap(hexMessage);
+                
+                // Update bitmap info
+                document.getElementById('requestPrimaryBitmap').textContent = bitmapInfo.primaryBitmap || '-';
+                document.getElementById('requestSecondaryBitmap').textContent = bitmapInfo.secondaryBitmap || 'None';
+                document.getElementById('requestActiveFields').textContent = bitmapInfo.presentFields.join(', ') || 'None';
+
+                // Display JSON
+                const jsonDisplay = {};
+                for (const [key, value] of Object.entries(message)) {
+                    const fieldSpec = isoEngine.getFieldSpec(key);
+                    if (fieldSpec) {
+                        jsonDisplay[fieldSpec.name] = value;
+                    } else if (key === 'MTI') {
+                        jsonDisplay.MTI = value;
+                    }
+                }
+                document.getElementById('requestJson').textContent = JSON.stringify(jsonDisplay, null, 2);
+
+                // Display parsed fields
+                const fields = isoEngine.messageToFields(message);
+                let tableHTML = '';
+                if (fields.length === 0) {
+                    tableHTML = '<tr class="border-b border-gray-800/30"><td colspan="3" class="px-2 py-2 text-center text-gray-500">No fields parsed</td></tr>';
+                } else {
+                    for (const field of fields) {
+                        tableHTML += `<tr class="border-b border-gray-800/30 hover:bg-[#1a1a1a]/50">`;
+                        tableHTML += `<td class="px-2 py-2 text-emerald-400">${field.number}</td>`;
+                        tableHTML += `<td class="px-2 py-2 text-gray-500">${field.name}</td>`;
+                        tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                        tableHTML += `</tr>`;
+                    }
+                }
+                document.getElementById('requestFields').innerHTML = tableHTML;
+
+                // Update decoded info (right column)
+                const pan = document.getElementById('pan').value.replace(/\s/g, '');
+                const amount = document.getElementById('amount').value;
+                
+                document.getElementById('decodedMTI').textContent = '0100';
+                document.getElementById('decodedAmount').textContent = amount || '0.00';
+                document.getElementById('decodedChannel').textContent = selectedChannel;
+                
+                // Detect card scheme from PAN
+                if (pan) {
+                    const firstDigit = pan.charAt(0);
+                    let scheme = 'UNKNOWN';
+                    if (firstDigit === '4') scheme = 'VISA';
+                    else if (firstDigit === '5') scheme = 'MASTERCARD';
+                    else if (firstDigit === '3') scheme = 'AMEX';
+                    document.getElementById('decodedScheme').textContent = scheme;
+                }
+
+            } catch (error) {
+                console.error('Preview error:', error);
+            }
+        }
+
+        // Format card number display
+        document.getElementById('pan').addEventListener('input', function(e) {
+            // Remove all non-digits
+            let value = e.target.value.replace(/\D/g, '');
+            // Limit to 16 digits
+            value = value.substring(0, 16);
+            // Add space every 4 digits
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+            updatePreview();
+        });
+
+        // Format amount input
+        document.getElementById('amount').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d.]/g, '');
+            
+            // Allow only one decimal point
+            const parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            
+            // Limit decimal places to 2
+            if (parts.length === 2 && parts[1].length > 2) {
+                value = parts[0] + '.' + parts[1].substring(0, 2);
+            }
+            
+            e.target.value = value;
+            updatePreview();
+        });
+
+        // Format amount on blur (add .00 if needed)
+        document.getElementById('amount').addEventListener('blur', function(e) {
+            let value = e.target.value;
+            if (value && !value.includes('.')) {
+                e.target.value = value + '.00';
+            } else if (value && value.endsWith('.')) {
+                e.target.value = value + '00';
+            } else if (value && value.split('.')[1]?.length === 1) {
+                e.target.value = value + '0';
+            }
+            updatePreview();
+        });
+
+        // Reset checks and processing state
+        function resetChecks() {
+            isProcessing = false; // Reset processing flag
+            
+            const checks = ['Card', 'Balance', 'Fraud'];
+            checks.forEach(check => {
+                const icon = document.getElementById('check' + check + 'Icon');
+                const text = document.getElementById('check' + check + 'Text');
+                
+                icon.className = 'w-3.5 h-3.5 text-yellow-400/60 animate-pulse';
+                icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>';
+                
+                text.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60';
+                text.textContent = 'PENDING';
+            });
+        }
+
+        // Update check status
+        function updateCheck(checkName, status) {
+            const icon = document.getElementById('check' + checkName + 'Icon');
+            const text = document.getElementById('check' + checkName + 'Text');
+            
+            if (status === 'success') {
+                icon.className = 'w-3.5 h-3.5 text-emerald-400';
+                icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M9 12l2 2 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>';
+                text.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400';
+                text.textContent = 'SUCCESS';
+            } else if (status === 'failed') {
+                icon.className = 'w-3.5 h-3.5 text-red-400';
+                icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M15 9l-6 6M9 9l6 6" stroke-width="2" stroke-linecap="round"></path>';
+                text.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-500/10 text-red-400';
+                text.textContent = 'FAILED';
+            }
+        }
+
+        // Simulate check progression
+        function simulateChecks(scenario) {
+            resetChecks();
+            
+            setTimeout(() => {
+                if (scenario === '14') {
+                    updateCheck('Card', 'failed');
+                } else {
+                    updateCheck('Card', 'success');
+                }
+            }, 500);
+
+            setTimeout(() => {
+                if (scenario === '96') {
+                    updateCheck('Fraud', 'failed');
+                } else {
+                    updateCheck('Fraud', 'success');
+                }
+            }, 1000);
+
+            setTimeout(() => {
+                if (scenario === '51') {
+                    updateCheck('Balance', 'failed');
+                } else if (scenario === '14' || scenario === '96') {
+                    // Keep pending
+                } else {
+                    updateCheck('Balance', 'success');
+                }
+            }, 1500);
+        }
+
+        // Update result display
+        function updateResult(code, text, color) {
+            const resultCard = document.getElementById('resultCard');
+            const codeDisplay = document.getElementById('responseCodeDisplay');
+            const descDisplay = document.getElementById('responseCodeDesc');
+            
+            // Update card border and background
+            if (color === 'emerald') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-emerald-500 bg-emerald-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-emerald-400';
+            } else if (color === 'red') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-red-500 bg-red-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-red-400';
+            } else if (color === 'orange') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-orange-500 bg-orange-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-orange-400';
+            } else if (color === 'amber') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-amber-500 bg-amber-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-amber-400';
+            }
+            
+            codeDisplay.textContent = code;
+            descDisplay.textContent = text;
+        }
 
         // Handle form submission
         document.getElementById('transactionForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+            
+            // Reset processing flag if stuck
+            if (isProcessing) {
+                console.log('Resetting stuck processing flag');
+                isProcessing = false;
+            }
+            
+            console.log('=== DEBUG ===');
+            console.log('isProcessing:', isProcessing);
+            console.log('isoEngine.ready:', isoEngine.ready);
+            console.log('isoEngine:', isoEngine);
+            console.log('=== END DEBUG ===');
 
-            const pan = document.getElementById('pan').value.replace(/\s/g, '');
-            const amount = document.getElementById('amount').value;
-            const currency = document.getElementById('currency').value;
+            if (isProcessing || !isoEngine.ready) {
+                console.log('Processing or engine not ready');
+                return;
+            }
 
-            // Convert amount to 12-digit format (pad with zeros)
-            const amountCents = Math.round(parseFloat(amount) * 100);
-            const amountTrn = String(amountCents).padStart(12, '0');
+            // Build message before processing
+            currentMessage = buildMessage();
+            
+            if (!currentMessage || !currentMessage.MTI) {
+                console.error('Failed to build message');
+                return;
+            }
 
+            isProcessing = true;
+            const scenario = document.getElementById('scenario').value;
+            console.log('Processing transaction with scenario:', scenario);
+
+            // Convert to backend ISOMessage format
             const payload = {
-                MTI: "0100",
-                PAN: pan,
-                ProcCode: "003000",
-                AmountTrn: amountTrn,
-                LocalTime: getLocalTime(),
-                LocalDate: getLocalDate(),
-                STAN: generateSTAN(),
-                TerminalID: "TERM0001",
-                MerchantID: "MERC00000000001"
+                MTI: currentMessage.MTI || '0100',
+                Bitmap: '', // Backend boş kabul etmeli
+                PAN: currentMessage['2'] || '',
+                ProcCode: currentMessage['3'] || '000000',
+                AmountTrn: currentMessage['4'] || '',
+                AmountSet: '', // Boş gönder
+                AmountBil: '', // Boş gönder
+                TransDateTime: currentMessage['7'] || '',
+                ConvRateSet: '', // Boş gönder
+                ConvRateBil: '', // Boş gönder
+                STAN: currentMessage['11'] || '',
+                LocalTime: currentMessage['12'] || '',
+                LocalDate: currentMessage['13'] || '',
+                ExpDate: '', // Boş gönder
+                DateSet: '', // Boş gönder
+                DateConv: '', // Boş gönder
+                MerchantType: '', // Boş gönder
+                POSEntryMode: currentMessage['22'] || '',
+                POSCondCode: currentMessage['25'] || '00',
+                POSPinCode: '', // Boş gönder
+                AcqInstID: '', // Boş gönder
+                Track2Data: '', // Boş gönder
+                RRN: '', // Boş gönder
+                AuthRespID: '', // Boş gönder
+                RespCode: '', // Boş gönder
+                TerminalID: currentMessage['41'] || 'TERM0001',
+                MerchantID: currentMessage['42'] || 'MERCH0001234567', // 15 karakter sabit
+                MerchantLoc: '', // Boş gönder
+                AddDataNat: '', // Boş gönder
+                AddDataPriv: '', // Boş gönder
+                CurCodeTrn: currentMessage['49'] || '949',
+                CurCodeBil: '', // Boş gönder
+                PinData: '', // Boş gönder
+                SecurityData: '', // Boş gönder
+                AddAmounts: '', // Boş gönder
+                Priv2: '', // Boş gönder
+                ReservedPriv: '', // Boş gönder
+                NwManagementInf: '' // Boş gönder
             };
+            
+            console.log('Sending payload:', payload);
 
             try {
+                // Start checks animation
+                simulateChecks(scenario);
+
                 const response = await fetch('/v1/transaction', {
                     method: 'POST',
                     headers: {
@@ -274,74 +904,94 @@
                     body: JSON.stringify(payload)
                 });
 
-                const data = await response.json();
+                const responseText = await response.text();
+                console.log('Response status:', response.status);
+                console.log('Response text:', responseText);
+                
+                if (!response.ok) {
+                    console.error('Backend error:', responseText);
+                    isProcessing = false;
+                    return;
+                }
+                
+                const data = JSON.parse(responseText);
 
-                // Display hex data
-                document.getElementById('requestHex').textContent = data.request_hex || 'N/A';
-                document.getElementById('responseHex').textContent = data.response_hex || 'N/A';
+                // Parse response hex using ISO engine
+                if (data.response_hex) {
+                    try {
+                        const responseMessage = isoEngine.decode(data.response_hex);
+                        
+                        // Parse bitmap from response hex
+                        const responseBitmapInfo = isoEngine.extractBitmap(data.response_hex);
+                        
+                        // Display response hex
+                        document.getElementById('responseHex').textContent = data.response_hex;
 
-                // Display status
-                const statusCard = document.getElementById('statusCard');
-                statusCard.classList.remove('hidden');
+                        // Generate ASCII format for response
+                        const responseAsciiMessage = isoEngine.hexToAscii(data.response_hex);
+                        document.getElementById('responseAscii').textContent = responseAsciiMessage;
 
-                const respCode = data.response?.RespCode || 'Unknown';
-                const isSuccess = respCode === '00';
+                        // Update response bitmap info
+                        document.getElementById('responsePrimaryBitmap').textContent = responseBitmapInfo.primaryBitmap || '-';
+                        document.getElementById('responseSecondaryBitmap').textContent = responseBitmapInfo.secondaryBitmap || 'None';
+                        document.getElementById('responseActiveFields').textContent = responseBitmapInfo.presentFields.join(', ') || 'None';
 
-                // Status badge
-                const statusBadge = document.getElementById('statusBadge');
-                if (isSuccess) {
-                    statusBadge.innerHTML = '<span class="px-3 py-1 bg-emerald-500 text-white text-sm font-semibold rounded-full">SUCCESS</span>';
-                } else {
-                    statusBadge.innerHTML = '<span class="px-3 py-1 bg-red-500 text-white text-sm font-semibold rounded-full">DECLINED</span>';
+                        // Display response JSON
+                        const responseJSON = {};
+                        for (const [key, value] of Object.entries(responseMessage)) {
+                            responseJSON[key] = value;
+                        }
+                        document.getElementById('responseJson').textContent = JSON.stringify(responseJSON, null, 2);
+
+                        // Display response parsed fields
+                        const fields = isoEngine.messageToFields(responseMessage);
+                        let tableHTML = '';
+                        for (const field of fields) {
+                            tableHTML += `<tr class="border-b border-gray-800/30 hover:bg-[#1a1a1a]/50">`;
+                            tableHTML += `<td class="px-2 py-2 text-purple-400">${field.number}</td>`;
+                            tableHTML += `<td class="px-2 py-2 text-gray-500">${field.name}</td>`;
+                            tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                            tableHTML += `</tr>`;
+                        }
+                        document.getElementById('responseFields').innerHTML = tableHTML;
+
+                        // Update response code display
+                        const respCode = responseMessage.RespCode || responseMessage['39'] || data.response?.RespCode || '00';
+                        
+                        setTimeout(() => {
+                            if (respCode === '00') {
+                                updateResult('00', 'Approved', 'emerald');
+                            } else if (respCode === '51') {
+                                updateResult('51', 'Insufficient Funds', 'red');
+                            } else if (respCode === '14') {
+                                updateResult('14', 'Invalid Card', 'orange');
+                            } else if (respCode === '96') {
+                                updateResult('96', 'System Error', 'amber');
+                            } else {
+                                const responseCodeDesc = isoEngine.getResponseCodeDesc(respCode);
+                                updateResult(respCode, responseCodeDesc, 'red');
+                            }
+                            
+                            isProcessing = false;
+                        }, 1500);
+
+                    } catch (parseError) {
+                        console.error('Response parse error:', parseError);
+                        document.getElementById('responseFields').innerHTML = '<tr><td colspan="3" class="px-2 py-2 text-center text-red-400">Failed to parse response</td></tr>';
+                        document.getElementById('responseHex').textContent = data.response_hex;
+                        isProcessing = false;
+                    }
                 }
 
-                // Status details
-                const statusDetails = document.getElementById('statusDetails');
-                const responseCodeDesc = responseCodeMap[respCode] || 'Unknown error';
-                
-                statusDetails.innerHTML = `
-                    <div class="flex justify-between py-2 border-b border-slate-700">
-                        <span class="text-gray-400">MTI:</span>
-                        <span class="font-mono text-white">${data.response?.MTI || 'N/A'}</span>
-                    </div>
-                    <div class="flex justify-between py-2 border-b border-slate-700">
-                        <span class="text-gray-400">Response Code:</span>
-                        <span class="font-mono ${isSuccess ? 'text-emerald-400' : 'text-red-400'}">${respCode} - ${responseCodeDesc}</span>
-                    </div>
-                    <div class="flex justify-between py-2 border-b border-slate-700">
-                        <span class="text-gray-400">STAN:</span>
-                        <span class="font-mono text-white">${data.response?.STAN || 'N/A'}</span>
-                    </div>
-                    <div class="flex justify-between py-2 border-b border-slate-700">
-                        <span class="text-gray-400">Amount:</span>
-                        <span class="font-mono text-white">${amount} ${document.getElementById('currencySymbol').textContent}</span>
-                    </div>
-                    <div class="flex justify-between py-2">
-                        <span class="text-gray-400">PAN:</span>
-                        <span class="font-mono text-white">${pan.substring(0, 6)}******${pan.substring(pan.length - 4)}</span>
-                    </div>
-                `;
+                // Reset STAN for next transaction
+                currentSTAN = '';
 
             } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('requestHex').textContent = 'Error: ' + error.message;
-                document.getElementById('responseHex').textContent = 'Failed to process transaction';
+                console.error('Transaction error:', error);
+                updateResult('XX', 'Network Error', 'red');
+                isProcessing = false;
             }
         });
-
-        // Copy to clipboard
-        function copyToClipboard(elementId) {
-            const text = document.getElementById(elementId).textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                // Show feedback
-                const button = event.currentTarget;
-                const originalHTML = button.innerHTML;
-                button.innerHTML = '<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
-                setTimeout(() => {
-                    button.innerHTML = originalHTML;
-                }, 1000);
-            });
-        }
     </script>
 </body>
 </html>

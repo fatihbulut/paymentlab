@@ -1,0 +1,366 @@
+{
+  "version": "1.0",
+  "description": "ISO 8583 Field Specifications - Single Source of Truth",
+  "fields": {
+    "0": {
+      "name": "MTI",
+      "description": "Message Type Indicator",
+      "type": "string",
+      "length": 4,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "2": {
+      "name": "PAN",
+      "description": "Primary Account Number",
+      "type": "string",
+      "length": 19,
+      "format": "llvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "3": {
+      "name": "ProcCode",
+      "description": "Processing Code",
+      "type": "string",
+      "length": 6,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "4": {
+      "name": "AmountTrn",
+      "description": "Amount, Transaction",
+      "type": "string",
+      "length": 12,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "left",
+      "padChar": "0"
+    },
+    "5": {
+      "name": "AmountSet",
+      "description": "Amount, Settlement",
+      "type": "string",
+      "length": 12,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "left",
+      "padChar": "0"
+    },
+    "6": {
+      "name": "AmountBil",
+      "description": "Amount, Cardholder Billing",
+      "type": "string",
+      "length": 12,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "left",
+      "padChar": "0"
+    },
+    "7": {
+      "name": "TransDateTime",
+      "description": "Transmission Date & Time",
+      "type": "string",
+      "length": 10,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "9": {
+      "name": "ConvRateSet",
+      "description": "Conversion Rate, Settlement",
+      "type": "string",
+      "length": 8,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "10": {
+      "name": "ConvRateBil",
+      "description": "Conversion Rate, Cardholder Billing",
+      "type": "string",
+      "length": 8,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "11": {
+      "name": "STAN",
+      "description": "System Trace Audit Number",
+      "type": "string",
+      "length": 6,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "left",
+      "padChar": "0"
+    },
+    "12": {
+      "name": "LocalTime",
+      "description": "Local Transaction Time",
+      "type": "string",
+      "length": 6,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "13": {
+      "name": "LocalDate",
+      "description": "Local Transaction Date",
+      "type": "string",
+      "length": 4,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "14": {
+      "name": "ExpDate",
+      "description": "Expiration Date",
+      "type": "string",
+      "length": 4,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "15": {
+      "name": "DateSet",
+      "description": "Date, Settlement",
+      "type": "string",
+      "length": 4,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "16": {
+      "name": "DateConv",
+      "description": "Date, Conversion",
+      "type": "string",
+      "length": 4,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "18": {
+      "name": "MerchantType",
+      "description": "Merchant Type",
+      "type": "string",
+      "length": 4,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "22": {
+      "name": "POSEntryMode",
+      "description": "Point of Service Entry Mode",
+      "type": "string",
+      "length": 3,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "25": {
+      "name": "POSCondCode",
+      "description": "Point of Service Condition Code",
+      "type": "string",
+      "length": 2,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "26": {
+      "name": "POSPinCode",
+      "description": "Point of Service PIN Capture Code",
+      "type": "string",
+      "length": 2,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "32": {
+      "name": "AcqInstID",
+      "description": "Acquiring Institution ID",
+      "type": "string",
+      "length": 11,
+      "format": "llvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "35": {
+      "name": "Track2Data",
+      "description": "Track 2 Data",
+      "type": "string",
+      "length": 37,
+      "format": "llvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "37": {
+      "name": "RRN",
+      "description": "Retrieval Reference Number",
+      "type": "string",
+      "length": 12,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "38": {
+      "name": "AuthRespID",
+      "description": "Authorization Identification Response",
+      "type": "string",
+      "length": 6,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "39": {
+      "name": "RespCode",
+      "description": "Response Code",
+      "type": "string",
+      "length": 2,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "41": {
+      "name": "TerminalID",
+      "description": "Card Acceptor Terminal ID",
+      "type": "string",
+      "length": 8,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "42": {
+      "name": "MerchantID",
+      "description": "Card Acceptor ID Code",
+      "type": "string",
+      "length": 15,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "43": {
+      "name": "MerchantLoc",
+      "description": "Card Acceptor Name/Location",
+      "type": "string",
+      "length": 40,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "47": {
+      "name": "AddDataNat",
+      "description": "Additional Data - National",
+      "type": "string",
+      "length": 999,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "48": {
+      "name": "AddDataPriv",
+      "description": "Additional Data - Private",
+      "type": "string",
+      "length": 999,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "49": {
+      "name": "CurCodeTrn",
+      "description": "Currency Code, Transaction",
+      "type": "string",
+      "length": 3,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "51": {
+      "name": "CurCodeBil",
+      "description": "Currency Code, Cardholder Billing",
+      "type": "string",
+      "length": 3,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "52": {
+      "name": "PinData",
+      "description": "PIN Data",
+      "type": "string",
+      "length": 16,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "53": {
+      "name": "SecurityData",
+      "description": "Security Related Control Info",
+      "type": "string",
+      "length": 16,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "54": {
+      "name": "AddAmounts",
+      "description": "Additional Amounts",
+      "type": "string",
+      "length": 120,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "61": {
+      "name": "Priv2",
+      "description": "Terminal Private Data",
+      "type": "string",
+      "length": 999,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "63": {
+      "name": "ReservedPriv",
+      "description": "Reserved (private)",
+      "type": "string",
+      "length": 999,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "70": {
+      "name": "NwManagementInf",
+      "description": "Network Management Info Code",
+      "type": "string",
+      "length": 3,
+      "format": "fixed",
+      "encoding": "ascii",
+      "padding": "none"
+    },
+    "125": {
+      "name": "ReservedPriv125",
+      "description": "Reserved (private)",
+      "type": "string",
+      "length": 999,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    }
+  },
+  "responseCodes": {
+    "00": "Approved",
+    "05": "Do not honor",
+    "14": "Invalid card number",
+    "51": "Insufficient funds",
+    "54": "Expired card",
+    "55": "Incorrect PIN",
+    "57": "Transaction not permitted",
+    "58": "Transaction not permitted to terminal",
+    "61": "Exceeds withdrawal limit",
+    "65": "Exceeds withdrawal frequency",
+    "91": "Issuer or switch inoperative",
+    "96": "System malfunction"
+  }
+}
