@@ -2,12 +2,13 @@ package issuer
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net"
+	"runtime"
 	"time"
 
-	otelmetrics "iso-parser-service/internal/otel"
 	"iso-parser-service/internal/transport"
 
 	"go.opentelemetry.io/otel"
@@ -38,14 +39,18 @@ func handleConn(conn net.Conn, svc *Service) {
 	defer conn.Close()
 	remote := conn.RemoteAddr().String()
 
-	tracer := otel.Tracer("issuer")
+	tracer := otel.Tracer("issuer-tracer")
 
 	for {
 		start := time.Now()
+
+		// TCP üzerinden context propagation yapılamaz, bu yüzden yeni bir span başlatıyoruz
+		// ancak bu span acquirer'dan gelen trace'in child'ı olacak şekilde tasarlanabilir
 		ctx, span := tracer.Start(context.Background(), "issuer.handle_message")
 		span.SetAttributes(
 			attribute.String("remote.addr", remote),
 			attribute.String("protocol", "tcp"),
+			attribute.String("service", "issuer"),
 		)
 
 		hexReq, err := transport.ReadFrame(conn)
@@ -74,6 +79,7 @@ func handleConn(conn net.Conn, svc *Service) {
 			span.SetAttributes(
 				attribute.String("iso.mti", respMsg.MTI),
 				attribute.String("iso.response_code", respMsg.RespCode),
+				attribute.String("transaction.status", "processed"),
 			)
 			if respMsg.STAN != "" {
 				span.SetAttributes(attribute.String("iso.stan", respMsg.STAN))
@@ -81,7 +87,12 @@ func handleConn(conn net.Conn, svc *Service) {
 
 			// Record metrics
 			duration := time.Since(start)
-			otelmetrics.RecordTransactionWithService(ctx, "issuer", respMsg.MTI, respMsg.RespCode, duration)
+			span.SetAttributes(
+				attribute.Float64("transaction.duration_ms", duration.Seconds()*1000),
+			)
+
+			// Sadece kritik sağlık metrikleri
+			recordIssuerHealthMetrics()
 		}
 
 		span.SetAttributes(attribute.Int("response.length", len(hexResp)))
@@ -98,4 +109,25 @@ func handleConn(conn net.Conn, svc *Service) {
 		span.End()
 		ctx.Done()
 	}
+}
+
+// recordIssuerHealthMetrics records only critical health metrics for issuer
+func recordIssuerHealthMetrics() {
+	// Aktif İş Parçacığı (Goroutine) Sayısı
+	var goroutines = runtime.NumGoroutine()
+
+	// Bellek Kullanımı (RSS) - Linux/Unix sistemleri için
+	var rss int64
+	// Basit RSS ölçümü - production'da daha gelişmiş yöntem kullanılabilir
+	rss = estimateIssuerRSSMemory()
+
+	fmt.Printf("HEALTH_METRIC: service=issuer goroutines=%d rss_bytes=%d\n", goroutines, rss)
+}
+
+// estimateIssuerRSSMemory basit RSS tahmini yapar
+func estimateIssuerRSSMemory() int64 {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// Sys değerinden heap tahmini çıkararak basit RSS tahmini
+	return int64(m.Sys) - int64(m.HeapSys)
 }
