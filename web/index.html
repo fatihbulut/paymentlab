@@ -31,18 +31,27 @@
         }
     </style>
 </head>
-<body class="bg-[#0c0c0c] text-white min-h-screen overflow-hidden">
+<body class="bg-[#0c0c0c] text-white min-h-screen lg:overflow-hidden">
     <!-- Header -->
     <header class="px-6 py-3 border-b border-gray-800/50 bg-[#111]/80 backdrop-blur-sm">
-        <h1 class="text-sm text-gray-400">ISO 8583 Payment Simulator</h1>
+        <div class="flex items-center gap-3">
+            <h1 class="text-sm text-gray-400">ISO 8583 Payment Simulator</h1>
+            <div class="flex items-center gap-2 px-2 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full">
+                <div class="w-4 h-4 relative">
+                    <!-- Gopher with Dozer -->
+                    <div class="absolute inset-0 flex items-center justify-center text-xs">🔧</div>
+                </div>
+                <span class="text-xs text-yellow-400 font-medium">In Development</span>
+            </div>
+        </div>
     </header>
 
     <!-- Main Dashboard Container -->
-    <div class="p-6 flex gap-6 items-stretch overflow-hidden" style="height: calc(100vh - 60px);">
+    <div class="p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 items-stretch lg:h-[calc(100vh-60px)]">
         
         <!-- Left Column: Acquirer Console -->
-        <div class="w-[280px] flex-shrink-0">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+        <div class="w-full lg:w-[280px] lg:flex-shrink-0">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col">
                 <!-- Header -->
                 <div class="mb-5 pb-3 border-b border-gray-800/50">
                     <h2 class="text-sm text-gray-300">Acquirer</h2>
@@ -113,26 +122,29 @@
                         </div>
                     </div>
 
-                    <!-- Scenario Selector -->
-                    <div class="bg-[#0a0a0a] border border-purple-500/30 rounded-md p-3 space-y-1.5 mt-4">
+                    <!-- Scenario Selector (Demo Only) -->
+                    <div class="bg-[#0a0a0a] border border-purple-500/30 rounded-md p-3 space-y-1.5 mt-4 opacity-75">
                         <div class="flex items-center gap-2 mb-2">
                             <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <circle cx="12" cy="12" r="10"></circle>
                                 <circle cx="12" cy="12" r="1"></circle>
                             </svg>
                             <h3 class="text-xs text-purple-400">Scenario Selector</h3>
+                            <span class="text-xs text-gray-500 italic">(Demo Only)</span>
                         </div>
                         <div class="space-y-1.5">
                             <label for="scenario" class="text-xs text-gray-400 block">Transaction Outcome</label>
                             <select 
                                 id="scenario"
-                                class="w-full bg-[#1a1a1a] border border-purple-500/30 focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/20 text-white h-9 text-xs rounded-md px-3 outline-none"
+                                disabled
+                                class="w-full bg-[#1a1a1a] border border-purple-500/30 text-gray-500 h-9 text-xs rounded-md px-3 outline-none cursor-not-allowed"
                             >
                                 <option value="00">00 - Approved</option>
                                 <option value="51">51 - Insufficient Funds</option>
                                 <option value="14">14 - Invalid Card</option>
                                 <option value="96">96 - System Error</option>
                             </select>
+                            <p class="text-xs text-gray-500 italic mt-1">Not implemented yet</p>
                         </div>
                     </div>
 
@@ -148,8 +160,8 @@
         </div>
 
         <!-- Middle Column: ISO 8583 Visualizer -->
-        <div class="flex-1">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+        <div class="flex-1 order-2 lg:order-1">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col">
                 <!-- Header -->
                 <div class="mb-4 pb-3 border-b border-gray-800/50">
                     <h2 class="text-sm text-gray-300">ISO 8583 Message</h2>
@@ -158,16 +170,16 @@
                 <div class="flex-1 flex flex-col gap-3 min-h-0">
                     <!-- Request Section -->
                     <div id="requestSection" class="flex flex-col" style="flex: 1 1 50%; min-height: 0;">
-                        <div class="flex items-center justify-between mb-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                             <h3 class="text-xs text-emerald-400">Request (0100)</h3>
-                            <div class="flex gap-0.5 border-b border-gray-800/50">
-                                <button type="button" onclick="switchRequestTab('parsed')" id="req-tab-parsed" class="px-3 py-1.5 text-xs transition-all border-b-2 border-emerald-500 text-emerald-400">
-                                    Parsed Fields
+                            <div class="flex gap-0.5 border-b border-gray-800/50 overflow-x-auto">
+                                <button type="button" onclick="switchRequestTab('parsed')" id="req-tab-parsed" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-emerald-500 text-emerald-400 whitespace-nowrap">
+                                    Parsed
                                 </button>
-                                <button type="button" onclick="switchRequestTab('raw')" id="req-tab-raw" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
-                                    Raw Data
+                                <button type="button" onclick="switchRequestTab('raw')" id="req-tab-raw" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
+                                    Raw
                                 </button>
-                                <button type="button" onclick="switchRequestTab('json')" id="req-tab-json" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
+                                <button type="button" onclick="switchRequestTab('json')" id="req-tab-json" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
                                     JSON
                                 </button>
                             </div>
@@ -247,16 +259,16 @@
 
                     <!-- Response Section -->
                     <div id="responseSection" class="flex flex-col" style="flex: 1 1 50%; min-height: 0;">
-                        <div class="flex items-center justify-between mb-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                             <h3 class="text-xs text-purple-400">Response (0110)</h3>
-                            <div class="flex gap-0.5 border-b border-gray-800/50">
-                                <button type="button" onclick="switchResponseTab('parsed')" id="res-tab-parsed" class="px-3 py-1.5 text-xs transition-all border-b-2 border-purple-500 text-purple-400">
-                                    Parsed Fields
+                            <div class="flex gap-0.5 border-b border-gray-800/50 overflow-x-auto">
+                                <button type="button" onclick="switchResponseTab('parsed')" id="res-tab-parsed" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-purple-500 text-purple-400 whitespace-nowrap">
+                                    Parsed
                                 </button>
-                                <button type="button" onclick="switchResponseTab('raw')" id="res-tab-raw" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
-                                    Raw Data
+                                <button type="button" onclick="switchResponseTab('raw')" id="res-tab-raw" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
+                                    Raw
                                 </button>
-                                <button type="button" onclick="switchResponseTab('json')" id="res-tab-json" class="px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400">
+                                <button type="button" onclick="switchResponseTab('json')" id="res-tab-json" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
                                     JSON
                                 </button>
                             </div>
@@ -333,8 +345,8 @@
         </div>
 
         <!-- Right Column: Issuer Engine -->
-        <div class="w-[340px] flex-shrink-0">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+        <div class="w-full lg:w-[340px] lg:flex-shrink-0 order-1 lg:order-3">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col">
                 <!-- Header -->
                 <div class="mb-4 pb-3 border-b border-gray-800/50">
                     <h2 class="text-sm text-gray-300">Issuer Engine</h2>
@@ -368,10 +380,13 @@
                         </div>
                     </div>
 
-                    <!-- Status Checklist -->
+                    <!-- Status Checklist (Demo Only) -->
                     <div>
-                        <h3 class="text-xs text-gray-400 mb-2">Checks</h3>
-                        <div class="bg-[#0a0a0a] border border-gray-800/50 rounded-md p-3 space-y-2">
+                        <div class="flex items-center gap-2 mb-2">
+                            <h3 class="text-xs text-gray-400">Checks</h3>
+                            <span class="text-xs text-gray-500 italic">(Demo Only)</span>
+                        </div>
+                        <div class="bg-[#0a0a0a] border border-gray-800/50 rounded-md p-3 space-y-2 opacity-75">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-2">
                                     <svg id="checkCardIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -408,6 +423,7 @@
                                     PENDING
                                 </div>
                             </div>
+                            <p class="text-xs text-gray-500 italic text-center mt-2">Not implemented yet</p>
                         </div>
                     </div>
 
@@ -432,6 +448,7 @@
         let activeRequestTab = 'parsed';
         let activeResponseTab = 'parsed';
         let selectedChannel = 'POS';
+        let currentTerminalId = 'POS00001'; // Default for POS
         let isProcessing = false;
 
         // Initialize ISO Engine when page loads
@@ -459,6 +476,30 @@
                 }
             });
             document.getElementById('decodedChannel').textContent = channel;
+            
+            // Update TerminalID based on channel (8 characters)
+            let terminalId = '';
+            switch(channel) {
+                case 'POS':
+                    terminalId = 'POS00001';
+                    break;
+                case 'ATM':
+                    terminalId = 'ATM00001';
+                    break;
+                case 'Web':
+                    terminalId = 'WEB00001';
+                    break;
+                default:
+                    terminalId = 'TERM0001';
+            }
+            
+            // Update currentTerminalId global variable
+            currentTerminalId = terminalId;
+            
+            // Update Issuer Engine display
+            document.getElementById('decodedTerminal').textContent = terminalId;
+            
+            console.log('Channel changed to:', channel, 'TerminalID:', terminalId);
             updatePreview();
         }
 
@@ -597,7 +638,7 @@
                 '13': getLocalDate(), // 4 karakter (MMDD)
                 '22': posEntryMode, // 3 karakter fixed
                 '25': '00', // 2 karakter fixed
-                '41': 'TERM0001', // 8 karakter fixed
+                '41': currentTerminalId, // 8 karakter fixed (dinamik)
                 '42': 'MERCH0001234567', // 15 karakter fixed
                 '49': '949' // 3 karakter fixed
             };
@@ -875,7 +916,7 @@
                 RRN: '', // Boş gönder
                 AuthRespID: '', // Boş gönder
                 RespCode: '', // Boş gönder
-                TerminalID: currentMessage['41'] || 'TERM0001',
+                TerminalID: currentTerminalId,
                 MerchantID: currentMessage['42'] || 'MERCH0001234567', // 15 karakter sabit
                 MerchantLoc: '', // Boş gönder
                 AddDataNat: '', // Boş gönder
