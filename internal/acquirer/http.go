@@ -43,6 +43,11 @@ func (s *HTTPServer) Router() *gin.Engine {
 		c.File("web/iso-engine.js")
 	})
 
+	// Serve social media image
+	router.GET("/og-image.png", func(c *gin.Context) {
+		c.File("web/og-image.png")
+	})
+
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
