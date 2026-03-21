@@ -8,6 +8,7 @@ on:
       - 'internal/issuer/**' 
       - 'internal/iso/**'      
       - 'internal/transport/**'
+      - 'web/**'
       - 'go.mod'
       - 'go.sum'
 
@@ -33,6 +34,16 @@ jobs:
           key: ${{ vars.ISSUER_SSH_PRIVATE_KEY }} 
           source: "myissuer"
           target: "/home/ubuntu/issuer-service/"
+
+      - name: Copy Web Files
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ vars.ISSUER_IP }} 
+          username: ${{ vars.REMOTE_USER }}
+          key: ${{ vars.ISSUER_SSH_PRIVATE_KEY }} 
+          source: "web/"
+          target: "/home/ubuntu/issuer-service/"
+          strip_components: 0
 
       - name: Restart Service
         uses: appleboy/ssh-action@master
