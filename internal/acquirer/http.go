@@ -45,6 +45,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 
 	// Serve social media image
 	router.GET("/og-image.png", func(c *gin.Context) {
+		c.Header("Content-Type", "image/png")
 		c.File("web/og-image.png")
 	})
 
