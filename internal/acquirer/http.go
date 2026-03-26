@@ -1,6 +1,7 @@
 package acquirer
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"runtime"
@@ -15,11 +16,15 @@ import (
 )
 
 type HTTPServer struct {
-	issuerClient IssuerClient
+	issuerClient   IssuerClient
+	switchInstance *AcquirerSwitch
 }
 
-func NewHTTPServer(client IssuerClient) *HTTPServer {
-	return &HTTPServer{issuerClient: client}
+func NewHTTPServer(client IssuerClient, switchInstance *AcquirerSwitch) *HTTPServer {
+	return &HTTPServer{
+		issuerClient:   client,
+		switchInstance: switchInstance,
+	}
 }
 
 // Router constructs a gin.Engine with all acquirer HTTP routes registered.
@@ -58,7 +63,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 }
 
 func (s *HTTPServer) handleTransaction(c *gin.Context) {
-	// Root Trace: HTTP Request ile başlar
+	// Start root trace for HTTP request
 	tracer := otel.Tracer("acquirer-tracer")
 	ctx, span := tracer.Start(c.Request.Context(), "transaction-processing")
 	defer span.End()
@@ -71,7 +76,7 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "invalid_json"),
 		)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "geçersiz ISOMessage JSON"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ISOMessage JSON"})
 		return
 	}
 
@@ -81,25 +86,40 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "iso_pack_error"),
 		)
-		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("ISO pack hatası: %v", err)})
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": fmt.Sprintf("ISO pack error: %v", err)})
 		return
 	}
 
-	// Context Propagation: Trace bilgisini TCP isteğine ekle
+	// Context propagation: Add trace information to TCP request
 	span.SetAttributes(
 		attribute.String("transaction.mti", req.MTI),
 		attribute.String("transaction.pan_masked", maskPAN(req.PAN)),
 	)
 
-	hexResp, err := s.issuerClient.SendAndReceive(ctx, hexReq)
+	// Convert hex string to raw bytes for Switch
+	rawISOBytes, err := hex.DecodeString(hexReq)
 	if err != nil {
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
-			attribute.String("error", "issuer_communication_error"),
+			attribute.String("error", "hex_decode_error"),
 		)
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer ile iletişim hatası: %v", err)})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("hex decode error: %v", err)})
 		return
 	}
+
+	// Use Switch for TPDU-based communication
+	response, err := s.switchInstance.HandleTerminalRequest(ctx, rawISOBytes)
+	if err != nil {
+		span.SetAttributes(
+			attribute.String("transaction.status", "failed"),
+			attribute.String("error", "switch_communication_error"),
+		)
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("switch communication error: %v", err)})
+		return
+	}
+
+	// Convert response bytes back to hex string
+	hexResp := fmt.Sprintf("%x", response)
 
 	respMsg, err := iso.ParseHexToMessage(hexResp)
 	if err != nil {
@@ -107,7 +127,7 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "response_parse_error"),
 		)
-		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer yanıtı parse hatası: %v", err)})
+		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer response parse error: %v", err)})
 		return
 	}
 
@@ -119,7 +139,7 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		attribute.Float64("transaction.duration_ms", duration.Seconds()*1000),
 	)
 
-	// Sadece kritik sağlık metrikleri
+	// Record critical health metrics
 	recordHealthMetrics()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -140,23 +160,16 @@ func maskPAN(pan string) string {
 	return pan[:4] + strings.Repeat("*", len(pan)-8) + pan[len(pan)-4:]
 }
 
-// recordHealthMetrics records only critical health metrics
+// recordHealthMetrics records critical health metrics for monitoring
 func recordHealthMetrics() {
-	// Aktif İş Parçacığı (Goroutine) Sayısı
-	var goroutines = runtime.NumGoroutine()
-
-	// Bellek Kullanımı (RSS) - Linux/Unix sistemleri için
-	var rss int64
-	// Basit RSS ölçümü - production'da daha gelişmiş yöntem kullanılabilir
-	rss = estimateRSSMemory()
-
+	goroutines := runtime.NumGoroutine()
+	rss := estimateRSSMemory()
 	fmt.Printf("HEALTH_METRIC: service=acquirer goroutines=%d rss_bytes=%d\n", goroutines, rss)
 }
 
-// estimateRSSMemory basit RSS tahmini yapar
+// estimateRSSMemory provides a simple RSS memory estimation
 func estimateRSSMemory() int64 {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	// Sys değerinden heap tahmini çıkararak basit RSS tahmini
 	return int64(m.Sys) - int64(m.HeapSys)
 }

@@ -12,10 +12,10 @@ import (
 )
 
 type SpecJSON struct {
-	Version       string                       `json:"version"`
-	Description   string                       `json:"description"`
-	Fields        map[string]FieldSpec         `json:"fields"`
-	ResponseCodes map[string]string            `json:"responseCodes"`
+	Version       string               `json:"version"`
+	Description   string               `json:"description"`
+	Fields        map[string]FieldSpec `json:"fields"`
+	ResponseCodes map[string]string    `json:"responseCodes"`
 }
 
 type FieldSpec struct {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -25,12 +26,25 @@ func main() {
 		issuerAddr = "localhost:5001"
 	}
 
+	// Create switch instance for TPDU-based communication
+	switchInstance := acquirer.NewAcquirerSwitch(issuerAddr)
+
+	// Start the switch
+	ctx := context.Background()
+	if err := switchInstance.Start(ctx); err != nil {
+		log.Fatalf("failed to start switch: %v", err)
+	}
+	defer switchInstance.Stop(ctx)
+
+	// Create legacy client (for compatibility)
 	client := acquirer.NewTCPIssuerClient(issuerAddr)
-	server := acquirer.NewHTTPServer(client)
+
+	// Create HTTP server with both client and switch
+	server := acquirer.NewHTTPServer(client, switchInstance)
 
 	addr := ":" + httpPort
-	log.Printf("acquirer: HTTP dinliyor %s, issuer=%s", addr, issuerAddr)
+	log.Printf("acquirer: HTTP listening on %s, issuer=%s (TPDU-enabled)", addr, issuerAddr)
 	if err := server.Router().Run(addr); err != nil {
-		log.Fatalf("acquirer: HTTP başlatma hatası: %v", err)
+		log.Fatalf("acquirer: failed to start HTTP server: %v", err)
 	}
 }

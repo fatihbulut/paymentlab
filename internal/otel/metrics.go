@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	transactionCounter   metric.Int64Counter
-	processingDuration   metric.Float64Histogram
+	transactionCounter metric.Int64Counter
+	processingDuration metric.Float64Histogram
 )
 
 // initBusinessMetrics initializes custom business metrics for payment processing

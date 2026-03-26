@@ -3,177 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ISO 8583 Payment Simulator - ISO8583 Financial Transaction Testing Tool</title>
+    <title>ISO 8583 Payment Simulator</title>
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Interactive ISO 8583 payment simulator for testing financial transactions. Professional tool with real-time message encoding/decoding, tracing, and health metrics.">
-    <meta name="keywords" content="ISO 8583, iso8583, payment simulator, financial transactions, acquirer, issuer, payment testing, open banking, fintech, payment gateway, transaction processing, ISO8583 simulator">
-    <meta name="author" content="ISO Parser Service">
-    <meta name="robots" content="index, follow">
-    <meta name="language" content="English">
+    <meta name="description" content="Interactive ISO 8583 payment simulator for testing financial transactions. Professional tool with real-time message encoding/decoding.">
+    <meta name="keywords" content="ISO 8583, payment simulator, financial transactions, acquirer, issuer, fintech">
     
-    <!-- Open Graph / Facebook -->
+    <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://paymentlab.dev/">
-    <meta property="og:title" content="ISO 8583 Payment Simulator - Professional Financial Testing">
-    <meta property="og:description" content="Interactive ISO 8583 payment simulator with real-time message processing, tracing, and health monitoring. Perfect for fintech development and testing.">
-    <meta property="og:image" content="https://paymentlab.dev/og-image.png">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:image:type" content="image/png">
-    <meta property="og:image:alt" content="ISO 8583 Payment Simulator - Professional Financial Testing Tool">
-    <meta property="og:site_name" content="ISO 8583 Payment Simulator">
-    <meta property="fb:app_id" content="966242223397117">
+    <meta property="og:title" content="ISO 8583 Payment Simulator">
+    <meta property="og:description" content="Interactive ISO 8583 payment simulator with real-time message processing.">
+    <meta property="og:image" content="/og-image.png">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://paymentlab.dev/">
     <meta property="twitter:title" content="ISO 8583 Payment Simulator - Professional Financial Testing">
     <meta property="twitter:description" content="Interactive ISO 8583 payment simulator with real-time message processing, tracing, and health monitoring.">
-    <meta property="twitter:image" content="data:image/svg+xml;base64,PD94bWx2ZXJzaW9uPSIxLjAiZW5jb2Rpbmc9IlVURi04Ij8+PHN2Z3dpZHRoPSIxMjAwImhlaWdodD0iNjMwInZpZXdCb3g9IjAwMTIwMDYzMCJmaWxsPSJub25lInhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PCEtLUJhY2tncm91bmQtLT48cmVjdHdpZHRoPSIxMjAwImhlaWdodD0iNjMwImZpbGw9IiMxYTFhMWEiLz48IS0tTG9nby1zY2FsZWR1cHZlcnNpb24tLT48Z3RyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxNTApc2NhbGUoNikiPjxjaXJjbGVjeD0iMTYiY3k9IjE2InI9IjE1InN0cm9rZT0idXJsKCNncmFkNCkic3Ryb2tlLXdpZHRoPSIxImZpbGw9IiMwYTBhMGEiPjwvY2lyY2xlPjxyZWN0eD0iNiJ5PSIxMyJ3aWR0aD0iNiJoZWlnaHQ9IjYicng9IjEiZmlsbD0iIzEwYjk4MSJvcGFjaXR5PSIwLjkiPjwvcmVjdD48cGF0aGQ9Ik0xMzE2TDE5MTZNMTcxNEwxOTE2TDE3MTgic3Ryb2tlPSIjMDZiNmQ0InN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCJzdHJva2UtbGluZWpvaW49InJvdW5kImZpbGw9IiMwNmI2ZDQiPjwvcGF0aD48cmVjdHg9IjIwInk9IjEzIndpZHRoPSI2ImhlaWdodD0iNiJyeD0iMSJmaWxsPSIjYTg1NWY3Im9wYWNpdHk9IjAuOSI+PC9yZWN0PjxsaW5leDE9IjQieTE9IjQieDI9IjgiY3k9IjQic3Ryb2tlPSIjMTBiOTgxInN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjQieTE9IjQieDI9IjQiY3k9Ijgic3Ryb2tlPSIjMTBiOTgxInN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjI4InkxPSI0IngyPSIyNCJ5Mj0iNCJzdHJva2U9IiMwNmI2ZDQic3Ryb2tlLXdpZHRoPSIxLjUic3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L2xpbmU+PGxpbmV4MT0iMjgueTE9IjQieDI9IjI4InkyPSI4InN0cm9rZT0iIzA2YjZkNCJzdHJva2Utd2lkdGg9IjEuNSJzdHJva2UtbGluZWNhcD0icm91bmQiPjwvbGluZT48bGluZXgxPSI0InkxPSIyOCJ4Mj0iOCJ5Mj0iMjgic3Ryb2tlPSIjYTg1NWY3InN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjQieTE9IjI4IngyPSI0InkyPSIyNCJzdHJva2U9IiNhODU1Zjcic3Ryb2tlLXdpZHRoPSIxLjUic3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L2xpbmU+PGxpbmV4MT0iMjgueTE9IjI4IngyPSIyNCJ5Mj0iMjgic3Ryb2tlPSIjZjU5ZTBiInN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjI4InkxPSIyOCJ4Mj0iMjgieTI9IjI0InN0cm9rZT0iI2Y1OWUwYiJzdHJva2Utd2lkdGg9IjEuNSJzdHJva2UtbGluZWNhcD0icm91bmQiPjwvbGluZT48L2c+PCEtLVRleHQtLT48dGV4dHg9IjQwMCJ5PSIyNTAiZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiZm9udC1zaXplPSI1NiJmb250LXdlaWdodD0iYm9sZCJmaWxsPSJ3aGl0ZSI+SVNPODU4MzwvdGV4dD48dGV4dHg9IjQwMCJ5PSIzMzAiZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiZm9udC1zaXplPSI0MiJmaWxsPSIjM2I4MmY2Ij5QYXltZW50U2ltdWxhdG9yPC90ZXh0Pjx0ZXh0eD0iNDAwInk9IjQxMCJmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiJmb250LXNpemU9IjI4ImZpbGw9IiM5NGEzYjgiPlByb2Zlc3Npb25hbEZpbmFuY2lhbFRlc3RpbmdUb29sPC90ZXh0Pjx0ZXh0eD0iNDAwInk9IjQ5MCJmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiJmb250LXNpemU9IjIyImZpbGw9IiM2NDc0OGIiPlJlYWwtdGltZU1lc3NhZ2VQcm9jZXNzaW5nJlRyYWNpbmc8L3RleHQ+PCEtLUdyYWRpZW50ZGVmaW5pdGlvbi0tPjxkZWZzPjxsaW5lYXJHcmFkaWVudGlkPSJncmFkNCJ4MT0iMSJ5MT0iMSJ4Mj0iMzEieTI9IjMxImdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcG9mZnNldD0iMCUic3RvcC1jb2xvcj0iIzEwYjk4MSJzdG9wLW9wYWNpdHk9IjAuNiI+PC9zdG9wPjxzdG9wb2Zmc2V0PSI1MCUic3RvcC1jb2xvcj0iIzA2YjZkNCJzdG9wLW9wYWNpdHk9IjAuNiI+PC9zdG9wPjxzdG9wb2Zmc2V0PSIxMDAlInN0b3AtY29sb3I9IiNhODU1Zjcic3RvcC1vcGFjaXR5PSIwLjYiPjwvc3RvcD48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48L3N2Zz4=">
+    <meta property="twitter:image" content="/og-image.png">
     <meta property="twitter:image:alt" content="ISO 8583 Payment Simulator - Professional Financial Testing Tool">
         
     <!-- Technical Meta Tags -->
     <meta name="theme-color" content="#0a0a0a">
-    <meta name="msapplication-TileColor" content="#0a0a0a">
-    <meta name="application-name" content="ISO 8583 Payment Simulator">
-    <meta name="generator" content="Go + Gin + TailwindCSS">
-    <meta name="format-detection" content="telephone=no">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://paymentlab.dev/">
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='15' stroke='url(%23grad4)' stroke-width='1' fill='%230a0a0a'%3E%3C/circle%3E%3Crect x='6' y='13' width='6' height='6' rx='1' fill='%2310b981' opacity='0.9'%3E%3Canimate attributeName='opacity' values='0.9;0.3;0.9' dur='2s' repeatCount='indefinite'%3E%3C/animate%3E%3C/rect%3E%3Cpath d='M13 16 L19 16 M17 14 L19 16 L17 18' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Canimate attributeName='opacity' values='0.3;1;0.3' dur='2s' repeatCount='indefinite'%3E%3C/animate%3E%3C/path%3E%3Crect x='20' y='13' width='6' height='6' rx='1' fill='%23a855f7' opacity='0.9'%3E%3Canimate attributeName='opacity' values='0.3;0.9;0.3' dur='2s' repeatCount='indefinite'%3E%3C/animate%3E%3C/rect%3E%3Cline x1='4' y1='4' x2='8' y2='4' stroke='%2310b981' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='4' y1='4' x2='4' y2='8' stroke='%2310b981' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='4' x2='24' y2='4' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='4' x2='28' y2='8' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='4' y1='28' x2='8' y2='28' stroke='%23a855f7' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='4' y1='28' x2='4' y2='24' stroke='%23a855f7' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='28' x2='24' y2='28' stroke='%23f59e0b' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='28' x2='28' y2='24' stroke='%23f59e0b' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cdefs%3E%3ClinearGradient id='grad4' x1='1' y1='1' x2='31' y2='31' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%2310b981' stop-opacity='0.6'%3E%3C/stop%3E%3Cstop offset='50%25' stop-color='%2306b6d4' stop-opacity='0.6'%3E%3C/stop%3E%3Cstop offset='100%25' stop-color='%23a855f7' stop-opacity='0.6'%3E%3C/stop%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E">
     
-    <!-- Performance SEO - Critical Resources -->
-    <link rel="preload" href="/iso-engine.js" as="script">
-    <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/iso-engine.js"></script>
+    <!-- Resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- DNS Prefetch for External Resources -->
-    <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
-    <link rel="dns-prefetch" href="//fonts.googleapis.com">
-    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/iso-engine.js"></script>
         
-    <!-- JSON-LD Structured Data -->
+    <!-- Structured Data -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "ISO 8583 Payment Simulator",
-        "description": "Professional ISO 8583 payment simulator for testing financial transactions with real-time message encoding/decoding, tracing, and health metrics.",
-        "url": "https://paymentlab.dev/",
+        "description": "Professional ISO 8583 payment simulator for testing financial transactions.",
         "applicationCategory": "DeveloperApplication",
-        "operatingSystem": "Any",
-        "browserRequirements": "Modern web browser with JavaScript enabled",
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        },
-        "author": {
-            "@type": "Organization",
-            "name": "ISO Parser Service"
-        },
-        "keywords": "ISO 8583, payment simulator, financial transactions, acquirer, issuer, payment testing, open banking, fintech, payment gateway, transaction processing",
-        "programmingLanguage": "Go",
-        "isAccessibleForFree": true,
-        "featureList": [
-            "Real-time ISO 8583 message encoding and decoding",
-            "Interactive transaction simulation",
-            "Acquirer and Issuer communication testing",
-            "Health metrics monitoring",
-            "Mobile responsive design",
-            "Professional grade testing tools"
-        ]
-    }
-    </script>
-
-    <!-- Organization Schema -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "Organization",
-        "name": "ISO Parser Service",
-        "url": "https://paymentlab.dev/",
-        "logo": "data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='15' stroke='%2310b981' stroke-width='2' fill='%230a0a0a'%3E%3C/circle%3E%3Crect x='8' y='14' width='4' height='4' rx='0.5' fill='%2310b981'%3E%3C/rect%3E%3Cpath d='M13 16 L19 16 M18 15 L19 16 L18 17' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3C/path%3E%3Crect x='20' y='14' width='4' height='4' rx='0.5' fill='%23a855f7'%3E%3C/rect%3E%3C/svg%3E",
-        "description": "Professional ISO 8583 payment transaction testing and simulation platform for fintech developers.",
-        "foundingDate": "2026",
-        "contactPoint": {
-            "@type": "ContactPoint",
-            "contactType": "technical support",
-            "availableLanguage": ["English", "Turkish"]
-        },
-        "sameAs": [
-            "https://github.com/iso-parser-service",
-            "https://twitter.com/iso_parser"
-        ],
-        "areaServed": "Worldwide",
-        "knowsAbout": [
-            "ISO 8583",
-            "Payment Processing",
-            "Financial Transactions",
-            "Fintech Development",
-            "Acquirer Systems",
-            "Issuer Systems"
-        ]
-    }
-    </script>
-
-    <!-- FAQ Schema -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-            {
-                "@type": "Question",
-                "name": "What is ISO 8583?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "ISO 8583 is the international standard for financial transaction card-originated messages. It defines the message format and communication flow between acquirer and issuer systems in payment processing networks."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "How does the ISO 8583 Payment Simulator work?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "The simulator provides an interactive web interface to create, encode, and decode ISO 8583 messages. You can test different transaction types, channels (POS, ATM, Web), and see real-time message parsing between acquirer and issuer systems."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Is the ISO 8583 Payment Simulator free to use?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Yes, the simulator is completely free to use. It's built with Go for the backend and modern web technologies for the frontend, allowing developers to test payment transactions without any cost."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "What transaction types can I test with the simulator?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "You can test various financial transactions including authorization requests (0100), response messages (0110), different card schemes (VISA, Mastercard), channels (POS, ATM, Web), and see real-time message encoding/decoding with field-by-field analysis."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Can I use this simulator for production payment testing?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "The simulator is designed for development, testing, and educational purposes. It provides a realistic ISO 8583 environment but should be used in development/testing environments, not for live production transactions."
-                }
-            }
-        ]
+        "isAccessibleForFree": true
     }
     </script>
         
