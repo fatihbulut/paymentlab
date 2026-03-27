@@ -1,0 +1,17 @@
+# Deploy this file on the ACQUIRER server.
+# Connects to the PostgreSQL and Issuer TCP service running on the issuer server.
+#
+# Usage:
+#   cp .env.acquirer.example .env
+#   docker compose -f docker-compose.acquirer.yml up -d
+
+services:
+  acquirer:
+    image: ${ACQUIRER_IMAGE:-ghcr.io/OWNER/iso-parser-service-acquirer:latest}
+    restart: unless-stopped
+    ports:
+      - "${ACQUIRER_PORT:-8081}:8081"
+    environment:
+      DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/paymentlab?sslmode=disable
+      ISSUER_ADDR: ${ISSUER_ADDR}
+      ACQUIRER_PORT: 8081

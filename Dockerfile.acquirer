@@ -1,0 +1,21 @@
+FROM golang:1.25-alpine AS builder
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /out/acquirer ./cmd/acquirer
+
+FROM alpine:3.20
+
+WORKDIR /app
+
+COPY --from=builder /out/acquirer /app/acquirer
+COPY web /app/web
+COPY migrations /app/migrations
+
+EXPOSE 8081
+
+ENTRYPOINT ["/app/acquirer"]

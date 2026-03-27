@@ -1,0 +1,109 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+
+  # ─────────────────────────────────────────────────────
+  deploy-issuer:
+    name: Deploy → Issuer Server
+    runs-on: ubuntu-latest
+    if: |
+      contains(toJson(github.event.commits), '"cmd/issuer/') ||
+      contains(toJson(github.event.commits), '"internal/issuer/') ||
+      contains(toJson(github.event.commits), '"internal/iso/') ||
+      contains(toJson(github.event.commits), '"internal/auth/') ||
+      contains(toJson(github.event.commits), '"internal/transport/') ||
+      contains(toJson(github.event.commits), '"internal/store/') ||
+      contains(toJson(github.event.commits), '"go.mod') ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build Issuer
+        run: GOOS=linux GOARCH=amd64 go build -o myissuer ./cmd/issuer
+
+      - name: Copy binary to server
+        uses: appleboy/scp-action@master
+        with:
+          host:     ${{ vars.ISSUER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
+          source:   myissuer
+          target:   /home/ubuntu/issuer-service/
+
+      - name: Copy web/spec.json to server
+        uses: appleboy/scp-action@master
+        with:
+          host:     ${{ vars.ISSUER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
+          source:   web/spec.json
+          target:   /home/ubuntu/issuer-service/
+
+      - name: Restart service
+        uses: appleboy/ssh-action@master
+        with:
+          host:     ${{ vars.ISSUER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
+          script:   sudo systemctl restart issuer.service
+
+  # ─────────────────────────────────────────────────────
+  deploy-acquirer:
+    name: Deploy → Acquirer Server
+    runs-on: ubuntu-latest
+    if: |
+      contains(toJson(github.event.commits), '"cmd/acquirer/') ||
+      contains(toJson(github.event.commits), '"internal/acquirer/') ||
+      contains(toJson(github.event.commits), '"internal/iso/') ||
+      contains(toJson(github.event.commits), '"internal/transport/') ||
+      contains(toJson(github.event.commits), '"internal/store/') ||
+      contains(toJson(github.event.commits), '"web/') ||
+      contains(toJson(github.event.commits), '"go.mod') ||
+      github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Build Acquirer
+        run: GOOS=linux GOARCH=amd64 go build -o myacquirer ./cmd/acquirer
+
+      - name: Copy binary to server
+        uses: appleboy/scp-action@master
+        with:
+          host:     ${{ vars.ACQUIRER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
+          source:   myacquirer
+          target:   /home/ubuntu/acquirer-service/
+
+      - name: Copy web files to server
+        uses: appleboy/scp-action@master
+        with:
+          host:     ${{ vars.ACQUIRER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
+          source:   web/
+          target:   /home/ubuntu/acquirer-service/
+          strip_components: 0
+
+      - name: Restart service
+        uses: appleboy/ssh-action@master
+        with:
+          host:     ${{ vars.ACQUIRER_IP }}
+          username: ${{ vars.REMOTE_USER }}
+          key:      ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
+          script:   sudo systemctl restart acquirer.service

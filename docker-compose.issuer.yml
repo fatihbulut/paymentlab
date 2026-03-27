@@ -1,0 +1,33 @@
+# Deploy this file on the ISSUER server.
+# PostgreSQL lives here; acquirer connects to it remotely.
+#
+# Usage:
+#   cp .env.issuer.example .env
+#   docker compose -f docker-compose.issuer.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paymentlab
+      POSTGRES_USER: paymentlab
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  issuer:
+    image: ${ISSUER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-issuer:latest}
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@postgres:5432/paymentlab?sslmode=disable
+      ISSUER_LISTEN: 0.0.0.0:5001
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

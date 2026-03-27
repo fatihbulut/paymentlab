@@ -115,18 +115,50 @@
         </div>
     </header>
 
-    <!-- Main Dashboard Container -->
-    <main class="p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:h-[calc(100vh-60px)] overflow-hidden" role="main">
-        
+    <!-- App Shell -->
+    <div class="flex" style="height: calc(100vh - 60px)">
+
+        <!-- Side Nav Rail -->
+        <nav id="sideNav" class="w-[52px] bg-[#0a0a0a] border-r border-gray-800/50 flex flex-col items-center py-3 gap-1 flex-shrink-0">
+            <button type="button" id="nav-transaction" onclick="switchPage('transaction')"
+                class="w-9 h-9 rounded-lg flex flex-col items-center justify-center gap-0.5 bg-emerald-500/10 text-emerald-400 transition-all"
+                title="Transaction">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                </svg>
+                <span class="text-[8px] font-medium">TX</span>
+            </button>
+            <button type="button" id="nav-cards" onclick="switchPage('cards')"
+                class="w-9 h-9 rounded-lg flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-gray-400 hover:bg-gray-800/40 transition-all"
+                title="Cards">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <rect x="2" y="5" width="20" height="14" rx="2" stroke-width="1.5"/>
+                    <line x1="2" y1="10" x2="22" y2="10" stroke-width="1.5"/>
+                </svg>
+                <span class="text-[8px] font-medium">Cards</span>
+            </button>
+            <button type="button" id="nav-history" onclick="switchPage('history')"
+                class="w-9 h-9 rounded-lg flex flex-col items-center justify-center gap-0.5 text-gray-500 hover:text-gray-400 hover:bg-gray-800/40 transition-all"
+                title="History">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 12h6M9 16h4"/>
+                </svg>
+                <span class="text-[8px] font-medium">History</span>
+            </button>
+        </nav>
+
+        <!-- Pages Container -->
+        <div id="appPages" class="flex-1 overflow-hidden">
+
+        <!-- ═══ Transaction Page ═══ -->
+        <main id="page-transaction" class="p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 h-full overflow-hidden" role="main">
+
         <!-- Left Column: Acquirer Console -->
         <section class="w-full lg:w-[280px] lg:flex-shrink-0">
             <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
-                <!-- Header -->
-                <div class="mb-5 pb-3 border-b border-gray-800/50">
-                    <h2 id="acquirer-heading" class="text-sm text-gray-300">Acquirer</h2>
+                <div class="mb-4 pb-3 border-b border-gray-800/50">
+                    <h2 class="text-sm text-gray-300">Acquirer</h2>
                 </div>
-
-                <!-- Form -->
                 <form id="transactionForm" class="flex-1 flex flex-col">
                     <div class="flex-1 space-y-4">
                         <!-- Amount -->
@@ -146,85 +178,102 @@
                             </div>
                         </div>
 
-                        <!-- Card Number -->
+                        <!-- Card Selector -->
                         <div class="space-y-1.5">
-                            <label for="pan" class="text-xs text-gray-400 block">Card No</label>
-                            <input 
-                                type="text" 
-                                id="pan" 
-                                value="4532 1488 0343 6467"
-                                maxlength="19"
-                                class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 text-white h-9 text-sm rounded-md px-3 outline-none font-mono"
-                                placeholder="0000 0000 0000 0000"
-                            />
-                        </div>
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-gray-400">Card</label>
+                                <button type="button" onclick="switchPage('cards')"
+                                    class="text-[10px] text-cyan-500 hover:text-cyan-400 transition-colors">+ Add Card</button>
+                            </div>
+                            <div class="relative" id="cardSelectorWrapper">
+                                    <input
+                                        type="text"
+                                        id="cardFilter"
+                                        autocomplete="off"
+                                        class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 text-white h-9 text-sm rounded-md px-3 pr-7 outline-none font-mono"
+                                        placeholder="Select card or type PAN..."
+                                        onfocus="openCardDropdown()"
+                                        oninput="filterCardDropdown(this.value)"
+                                    />
+                                    <button type="button" tabindex="-1"
+                                        class="absolute inset-y-0 right-0 flex items-center pr-2.5"
+                                        onclick="openCardDropdown()">
+                                        <svg class="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                        </svg>
+                                    </button>
+                                    <div id="cardDropdown" class="hidden absolute z-50 w-full bg-[#0d0d0d] border border-gray-700/50 rounded-md mt-1 max-h-48 overflow-y-auto shadow-xl">
+                                    </div>
+                                </div>
+                                <input type="hidden" id="pan" value="" />
+                            </div>
 
-                        <!-- Channel Segmented Control -->
-                        <div class="space-y-1.5">
-                            <label class="text-xs text-gray-400 block">Channel</label>
-                            <div class="bg-[#1a1a1a] border border-gray-700/50 rounded-md p-1 flex gap-1">
-                                <button
-                                    type="button"
-                                    id="channel-pos"
-                                    onclick="selectChannel('POS')"
-                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white"
-                                >
-                                    POS
-                                </button>
-                                <button
-                                    type="button"
-                                    id="channel-atm"
-                                    onclick="selectChannel('ATM')"
-                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
-                                >
-                                    ATM
-                                </button>
-                                <button
-                                    type="button"
-                                    id="channel-web"
-                                    onclick="selectChannel('Web')"
-                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
-                                >
-                                    Web
-                                </button>
+                            <!-- Channel Segmented Control -->
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400 block">Channel</label>
+                                <div class="bg-[#1a1a1a] border border-gray-700/50 rounded-md p-1 flex gap-1">
+                                    <button
+                                        type="button"
+                                        id="channel-pos"
+                                        onclick="selectChannel('POS')"
+                                        class="flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white"
+                                    >
+                                        POS
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="channel-atm"
+                                        onclick="selectChannel('ATM')"
+                                        class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
+                                    >
+                                        ATM
+                                    </button>
+                                    <button
+                                        type="button"
+                                        id="channel-web"
+                                        onclick="selectChannel('Web')"
+                                        class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
+                                    >
+                                        Web
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Scenario Selector (Demo Only) -->
-                    <div class="bg-[#0a0a0a] border border-purple-500/30 rounded-md p-3 space-y-1.5 mt-4 opacity-75">
-                        <div class="flex items-center gap-2 mb-2">
-                            <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <circle cx="12" cy="12" r="1"></circle>
-                            </svg>
-                            <h3 class="text-xs text-purple-400">Scenario Selector</h3>
-                            <span class="text-xs text-gray-500 italic">(Demo Only)</span>
+                        <!-- Scenario Selector (Demo Only) -->
+                        <div class="bg-[#0a0a0a] border border-purple-500/30 rounded-md p-3 space-y-1.5 mt-4 opacity-75">
+                            <div class="flex items-center gap-2 mb-2">
+                                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <circle cx="12" cy="12" r="1"></circle>
+                                </svg>
+                                <h3 class="text-xs text-purple-400">Scenario Selector</h3>
+                                <span class="text-xs text-gray-500 italic">(Demo Only)</span>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label for="scenario" class="text-xs text-gray-400 block">Transaction Outcome</label>
+                                <select 
+                                    id="scenario"
+                                    disabled
+                                    class="w-full bg-[#1a1a1a] border border-purple-500/30 text-gray-500 h-9 text-xs rounded-md px-3 outline-none cursor-not-allowed"
+                                >
+                                    <option value="00">00 - Approved</option>
+                                    <option value="51">51 - Insufficient Funds</option>
+                                    <option value="14">14 - Invalid Card</option>
+                                    <option value="96">96 - System Error</option>
+                                </select>
+                                <p class="text-xs text-gray-500 italic mt-1">Not implemented yet</p>
+                            </div>
                         </div>
-                        <div class="space-y-1.5">
-                            <label for="scenario" class="text-xs text-gray-400 block">Transaction Outcome</label>
-                            <select 
-                                id="scenario"
-                                disabled
-                                class="w-full bg-[#1a1a1a] border border-purple-500/30 text-gray-500 h-9 text-xs rounded-md px-3 outline-none cursor-not-allowed"
-                            >
-                                <option value="00">00 - Approved</option>
-                                <option value="51">51 - Insufficient Funds</option>
-                                <option value="14">14 - Invalid Card</option>
-                                <option value="96">96 - System Error</option>
-                            </select>
-                            <p class="text-xs text-gray-500 italic mt-1">Not implemented yet</p>
-                        </div>
-                    </div>
 
-                    <!-- Process Button -->
-                    <button 
-                        type="submit"
-                        class="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-10 text-sm mt-4 rounded-md transition-colors"
-                    >
-                        Process
-                    </button>
-                </form>
+                        <!-- Process Button -->
+                        <button 
+                            type="submit"
+                            class="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-10 text-sm mt-4 rounded-md transition-colors"
+                        >
+                            Process
+                        </button>
+                    </form>
             </div>
         </section>
 
@@ -416,12 +465,10 @@
         <!-- Right Column: Issuer Engine -->
         <section class="w-full lg:w-[340px] lg:flex-shrink-0 order-1 lg:order-3" aria-labelledby="issuer-engine-heading">
             <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
-                <!-- Header -->
                 <div class="mb-4 pb-3 border-b border-gray-800/50">
                     <h2 id="issuer-engine-heading" class="text-sm text-gray-300">Issuer Engine</h2>
                 </div>
-
-                <div class="flex-1 flex flex-col gap-4">
+                <div class="flex-1 flex flex-col gap-4 overflow-hidden">
                     <!-- Decoded Data -->
                     <div>
                         <h3 class="text-xs text-gray-400 mb-2">Decoded</h3>
@@ -507,9 +554,199 @@
                         </div>
                     </div>
                 </div>
+
             </div>
         </section>
-    </main>
+        </main><!-- /page-transaction -->
+
+        <!-- ═══ Cards Page ═══ -->
+        <div id="page-cards" style="display:none" class="h-full p-4 lg:p-6 flex gap-4 overflow-hidden">
+            <!-- Create Card Panel -->
+            <div class="w-[320px] flex-shrink-0 flex flex-col gap-4">
+                <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 flex flex-col">
+                    <div class="mb-4 pb-3 border-b border-gray-800/50 flex items-center justify-between">
+                        <h2 id="cardFormTitle" class="text-sm text-gray-300">New Card</h2>
+                        <button type="button" id="cardFormCancelBtn" onclick="cancelEditMode()" style="display:none"
+                            class="text-[10px] text-gray-500 hover:text-gray-300 transition-colors">✕ Cancel</button>
+                    </div>
+                    <form id="createCardForm" onsubmit="handleCardFormSubmit(event)" class="space-y-3">
+                        <!-- PAN + generate button -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between">
+                                <label class="text-xs text-gray-400">PAN</label>
+                                <button type="button" onclick="onSchemeChange()"
+                                    class="text-[10px] text-cyan-500 hover:text-cyan-400 transition-colors">⟳ Generate</button>
+                            </div>
+                            <input type="text" id="cardPan" maxlength="20"
+                                class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-cyan-500/50 text-white h-9 text-sm rounded-md px-3 outline-none font-mono"
+                                placeholder="Auto-generate or type PAN"
+                                oninput="onCardPanInput(this.value)" />
+                            <p id="cardPanEditNote" style="display:none" class="text-[10px] text-gray-600">PAN cannot be changed after creation</p>
+                        </div>
+                        <!-- Expiry + Scheme -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400">Expiry (YYMM)</label>
+                                <input type="text" id="cardExpiry" maxlength="4" value="3001"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-cyan-500/50 text-white h-9 text-sm rounded-md px-3 outline-none font-mono"
+                                    placeholder="3001" />
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400">Scheme</label>
+                                <select id="cardScheme" onchange="onSchemeChange()"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 text-white h-9 text-xs rounded-md px-2 outline-none">
+                                    <option value="">Auto</option>
+                                    <option value="VISA">VISA</option>
+                                    <option value="MASTERCARD">MC</option>
+                                    <option value="TROY">TROY</option>
+                                    <option value="AMEX">AMEX</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- Credit Limit + Balance -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400">Credit Limit (kr)</label>
+                                <input type="number" id="cardCreditLimit" value="100000000"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-cyan-500/50 text-white h-9 text-sm rounded-md px-3 outline-none font-mono" />
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400">Balance (kr)</label>
+                                <input type="number" id="cardBalance" value="100000000"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-cyan-500/50 text-white h-9 text-sm rounded-md px-3 outline-none font-mono" />
+                            </div>
+                        </div>
+                        <!-- Currency + Status -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400">Currency</label>
+                                <select id="cardCurrency"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 text-white h-9 text-xs rounded-md px-2 outline-none">
+                                    <option value="949">TRY (949)</option>
+                                    <option value="840">USD (840)</option>
+                                    <option value="978">EUR (978)</option>
+                                </select>
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-xs text-gray-400">Status</label>
+                                <select id="cardStatus"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 text-white h-9 text-xs rounded-md px-2 outline-none">
+                                    <option value="ACTIVE">ACTIVE</option>
+                                    <option value="BLOCKED">BLOCKED</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- PIN (optional) -->
+                        <div class="space-y-1.5">
+                            <label class="text-xs text-gray-400">PIN <span class="text-gray-600">(optional)</span></label>
+                            <input type="password" id="cardPin" maxlength="8"
+                                class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-cyan-500/50 text-white h-9 text-sm rounded-md px-3 outline-none font-mono"
+                                placeholder="Leave blank to skip" />
+                        </div>
+                        <div id="createCardError" class="hidden text-xs text-red-400 bg-red-500/10 rounded p-2"></div>
+                        <div class="flex gap-2">
+                            <button type="submit" id="createCardBtn"
+                                class="flex-1 bg-cyan-600 hover:bg-cyan-500 text-white h-9 text-sm rounded-md transition-colors font-medium">
+                                Create Card
+                            </button>
+                            <button type="button" id="topUpCardBtn" onclick="handleTopUpCard()" style="display:none"
+                                class="bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-600/40 text-emerald-400 h-9 px-3 text-sm rounded-md transition-colors">
+                                Top Up
+                            </button>
+                            <button type="button" id="deleteCardBtn" onclick="handleDeleteCard()" style="display:none"
+                                class="bg-red-600/20 hover:bg-red-600/40 border border-red-600/40 text-red-400 h-9 px-3 text-sm rounded-md transition-colors">
+                                Delete
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- Cards List Panel -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                    <div class="mb-4 pb-3 border-b border-gray-800/50 flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm text-gray-300">Cards</h2>
+                            <span id="cardsPageCount" class="text-[10px] text-gray-600 bg-gray-800/60 px-1.5 py-0.5 rounded"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="text" id="cardsPageFilter" placeholder="Filter PAN, scheme..."
+                                oninput="filterCardsPage(this.value)"
+                                class="bg-[#1a1a1a] border border-gray-700/50 focus:border-gray-600 text-white h-7 text-xs rounded px-2.5 outline-none w-44 font-mono" />
+                            <button type="button" onclick="loadCards()" class="text-xs text-gray-500 hover:text-gray-300 px-1">↺</button>
+                        </div>
+                    </div>
+                    <div id="cardsList" class="flex-1 overflow-y-auto scrollable-content space-y-1.5 min-h-0">
+                        <p class="text-xs text-gray-600 text-center py-8">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /page-cards -->
+
+        <!-- ═══ History Page ═══ -->
+        <div id="page-history" style="display:none" class="h-full p-4 lg:p-6 flex flex-col overflow-hidden">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 flex-1 flex flex-col overflow-hidden">
+                <!-- Header + Filters -->
+                <div class="mb-4 pb-3 border-b border-gray-800/50 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-sm text-gray-300">Transaction History</h2>
+                        <span id="txPageCount" class="text-[10px] text-gray-600 bg-gray-800/60 px-1.5 py-0.5 rounded"></span>
+                        <div class="flex text-[10px] rounded border border-gray-700/50 overflow-hidden">
+                            <button id="txSrcAcq" onclick="setTxSource('acq')"
+                                class="px-2.5 py-1 bg-cyan-600/20 text-cyan-300 border-r border-gray-700/50 transition-colors">Acquirer</button>
+                            <button id="txSrcIss" onclick="setTxSource('iss')"
+                                class="px-2.5 py-1 text-gray-500 hover:text-gray-300 transition-colors">Issuer</button>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <select id="txStatusFilter" onchange="filterTxPage()"
+                            class="bg-[#1a1a1a] border border-gray-700/50 text-white h-7 text-xs rounded px-2 outline-none">
+                            <option value="">All Status</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="DECLINED">Declined</option>
+                            <option value="ERROR">Error</option>
+                            <option value="PENDING">Pending</option>
+                        </select>
+                        <input type="text" id="txPanFilter" placeholder="Search PAN..."
+                            oninput="filterTxPage()"
+                            class="bg-[#1a1a1a] border border-gray-700/50 text-white h-7 text-xs rounded px-2.5 outline-none w-36 font-mono" />
+                        <button type="button" onclick="clearTxFilters()"
+                            class="text-xs text-gray-500 hover:text-gray-300 h-7 px-2 rounded border border-gray-700/50">Clear</button>
+                        <button type="button" onclick="loadTxPage()"
+                            class="text-xs text-gray-500 hover:text-gray-300 px-1">↺</button>
+                    </div>
+                </div>
+                <!-- Transaction List -->
+                <div id="txPageList" class="flex-1 overflow-y-auto scrollable-content space-y-1.5 min-h-0">
+                    <p class="text-xs text-gray-600 text-center py-8">Loading...</p>
+                </div>
+            </div>
+        </div><!-- /page-history -->
+
+        </div><!-- /appPages -->
+    </div><!-- /App Shell -->
+
+    <!-- ═══ ISO 8583 Transaction Detail Slide-Over ═══ -->
+    <div id="txDetailBackdrop" onclick="closeTxDetail()" style="display:none"
+        class="fixed inset-0 bg-black/60 z-40"></div>
+    <div id="txDetailPanel" style="display:none; transform:translateX(100%)"
+        class="fixed right-0 top-0 h-full w-[660px] bg-[#0d0d0d] border-l border-gray-800/80 z-50 flex-col shadow-2xl transition-transform duration-300 ease-out">
+        <div class="px-5 py-4 border-b border-gray-800/80 flex items-start justify-between flex-shrink-0 bg-[#111]">
+            <div>
+                <h3 class="text-sm font-semibold text-white">ISO 8583 Detail</h3>
+                <p id="txDetailSubtitle" class="text-[10px] text-gray-500 mt-0.5 font-mono"></p>
+            </div>
+            <button onclick="closeTxDetail()" class="text-gray-600 hover:text-white text-xl leading-none mt-0.5 transition-colors">&times;</button>
+        </div>
+        <div id="txDetailSummary" class="px-5 py-2.5 border-b border-gray-800/50 bg-black/20 flex items-center gap-3 flex-shrink-0 text-[10px] font-mono flex-wrap min-h-[36px]"></div>
+        <div class="flex border-b border-gray-800/80 flex-shrink-0 bg-[#111]">
+            <button id="txDetailTabReq" onclick="switchTxDetailTab('req')"
+                class="px-5 py-2.5 text-xs text-white border-b-2 border-cyan-500 transition-colors">Request</button>
+            <button id="txDetailTabResp" onclick="switchTxDetailTab('resp')"
+                class="px-5 py-2.5 text-xs text-gray-500 border-b-2 border-transparent hover:text-gray-300 transition-colors">Response</button>
+        </div>
+        <div id="txDetailContent" class="flex-1 overflow-y-auto p-5 space-y-5 font-mono text-xs scrollable-content"></div>
+    </div>
 
     <script>
         let currentMessage = {};
@@ -517,6 +754,14 @@
         let activeRequestTab = 'parsed';
         let activeResponseTab = 'parsed';
         let selectedChannel = 'POS';
+        let _allCards = [];
+        let _allTxData = [];
+        let _dropdownOpen = false;
+        let _editCardId = null;
+        let _txDetailData = null;
+        let _txDetailTab = 'req';
+        let _allIssuerTxData = [];
+        let _txSource = 'acq';
         let currentTerminalId = 'POS00001'; // Default for POS
         let isProcessing = false;
 
@@ -527,6 +772,8 @@
                 await isoEngine.init();
                 console.log('ISO Engine ready:', isoEngine.ready);
                 updatePreview();
+                loadCards();
+                loadTransactions();
             } catch (error) {
                 console.error('Failed to initialize ISO Engine:', error);
                 alert('Failed to load ISO Engine. Please refresh the page.');
@@ -1095,6 +1342,7 @@
 
                 // Reset STAN for next transaction
                 currentSTAN = '';
+                loadTransactions();
 
             } catch (error) {
                 console.error('Transaction error:', error);
@@ -1102,6 +1350,801 @@
                 isProcessing = false;
             }
         });
+        function switchLeftTab() {} // replaced by switchPage
+        function switchRightTab() {} // replaced by switchPage
+
+        // Format kuruş to TRY string
+        function fmtBalance(kurus) {
+            if (kurus == null) return '-';
+            return (kurus / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+        }
+
+        // Format ISO timestamp to local HH:MM:SS
+        function fmtTime(isoStr) {
+            if (!isoStr) return '-';
+            try {
+                return new Date(isoStr).toLocaleTimeString('tr-TR');
+            } catch (_) { return isoStr; }
+        }
+
+        // Load cards from API
+        async function loadCards() {
+            try {
+                const resp = await fetch('/v1/cards?limit=200');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                const cards = data.cards || [];
+                _allCards = cards;
+                renderCardDropdown(document.getElementById('cardFilter')?.value || '');
+                // Auto-select first card if nothing is selected
+                const hiddenPAN = document.getElementById('pan');
+                const filterInput = document.getElementById('cardFilter');
+                if (filterInput && hiddenPAN && !hiddenPAN.value && cards.length > 0) {
+                    const first = cards[0];
+                    const pan = first.pan || '';
+                    const disp = pan ? pan.replace(/(\d{4})(?=\d)/g, '$1 ') : first.pan_masked;
+                    filterInput.value = disp;
+                    hiddenPAN.value = pan;
+                }
+                renderCardsPage(_allCards);
+            } catch (err) {
+                const c = document.getElementById('cardsList');
+                if (c) c.innerHTML = `<p class="text-xs text-red-400 text-center py-8">${err.message}</p>`;
+            }
+        }
+
+        // ── Card form: dispatch create vs update ────────────────────────────
+        function handleCardFormSubmit(event) {
+            if (_editCardId) {
+                handleUpdateCard(event);
+            } else {
+                handleCreateCard(event);
+            }
+        }
+
+        function enterEditMode(card) {
+            _editCardId = card.id;
+            document.getElementById('cardFormTitle').textContent = 'Edit Card';
+            document.getElementById('cardFormCancelBtn').style.display = '';
+            document.getElementById('deleteCardBtn').style.display = '';
+            document.getElementById('topUpCardBtn').style.display = '';
+            document.getElementById('createCardBtn').textContent = 'Update';
+            // PAN is read-only in edit mode
+            const panInput = document.getElementById('cardPan');
+            panInput.value = card.pan || card.pan_masked || '';
+            panInput.readOnly = true;
+            panInput.classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('cardPanEditNote').style.display = '';
+            // Populate fields
+            document.getElementById('cardExpiry').value = card.expiry_date || '';
+            const scheme = card.scheme || '';
+            const schemeEl = document.getElementById('cardScheme');
+            const opt = [...schemeEl.options].find(o => o.value === scheme);
+            schemeEl.value = opt ? scheme : '';
+            document.getElementById('cardCreditLimit').value = card.credit_limit ?? '';
+            document.getElementById('cardBalance').value = card.available_balance ?? '';
+            const curEl = document.getElementById('cardCurrency');
+            const curOpt = [...curEl.options].find(o => o.value === (card.currency_code || ''));
+            curEl.value = curOpt ? (card.currency_code || '') : '949';
+            const statusEl = document.getElementById('cardStatus');
+            const stOpt = [...statusEl.options].find(o => o.value === (card.status || ''));
+            statusEl.value = stOpt ? (card.status || 'ACTIVE') : 'ACTIVE';
+            document.getElementById('cardPin').value = '';
+            document.getElementById('createCardError').classList.add('hidden');
+        }
+
+        function cancelEditMode() {
+            _editCardId = null;
+            document.getElementById('cardFormTitle').textContent = 'New Card';
+            document.getElementById('cardFormCancelBtn').style.display = 'none';
+            document.getElementById('deleteCardBtn').style.display = 'none';
+            document.getElementById('topUpCardBtn').style.display = 'none';
+            document.getElementById('createCardBtn').textContent = 'Create Card';
+            const panInput = document.getElementById('cardPan');
+            panInput.value = '';
+            panInput.readOnly = false;
+            panInput.classList.remove('opacity-50', 'cursor-not-allowed');
+            document.getElementById('cardPanEditNote').style.display = 'none';
+            document.getElementById('cardExpiry').value = '3001';
+            document.getElementById('cardScheme').value = '';
+            document.getElementById('cardCreditLimit').value = '100000000';
+            document.getElementById('cardBalance').value = '100000000';
+            document.getElementById('cardCurrency').value = '949';
+            document.getElementById('cardStatus').value = 'ACTIVE';
+            document.getElementById('cardPin').value = '';
+            document.getElementById('createCardError').classList.add('hidden');
+        }
+
+        async function handleUpdateCard(event) {
+            event.preventDefault();
+            const errDiv = document.getElementById('createCardError');
+            const btn = document.getElementById('createCardBtn');
+            errDiv.classList.add('hidden');
+            const expiry       = document.getElementById('cardExpiry').value.trim();
+            let scheme         = document.getElementById('cardScheme').value;
+            if (!scheme) scheme = 'VISA';
+            const creditLimit  = parseInt(document.getElementById('cardCreditLimit')?.value || '0', 10) || 0;
+            const balance      = parseInt(document.getElementById('cardBalance').value, 10) || 0;
+            const currencyCode = document.getElementById('cardCurrency')?.value || '949';
+            const status       = document.getElementById('cardStatus')?.value || 'ACTIVE';
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const resp = await fetch(`/v1/cards/${_editCardId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ expiry_date: expiry, scheme, currency_code: currencyCode, credit_limit: creditLimit, available_balance: balance, status })
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    errDiv.textContent = data.error || 'Failed to update';
+                    errDiv.classList.remove('hidden');
+                    return;
+                }
+                cancelEditMode();
+                loadCards();
+            } catch (err) {
+                errDiv.textContent = 'Network error: ' + err.message;
+                errDiv.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Update';
+            }
+        }
+
+        async function handleDeleteCard() {
+            if (!_editCardId) return;
+            const btn = document.getElementById('deleteCardBtn');
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+                const resp = await fetch(`/v1/cards/${_editCardId}`, { method: 'DELETE' });
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    alert(data.error || 'Failed to delete');
+                    return;
+                }
+                cancelEditMode();
+                loadCards();
+            } catch (err) {
+                alert('Network error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Delete';
+            }
+        }
+
+        async function handleTopUpCard() {
+            if (!_editCardId) return;
+            const btn = document.getElementById('topUpCardBtn');
+            const amount = parseInt(prompt('Top-up amount (kuruş):', '10000000') || '0', 10);
+            if (!amount || amount <= 0) return;
+            btn.disabled = true;
+            btn.textContent = '...';
+            try {
+                const resp = await fetch(`/v1/cards/${_editCardId}/topup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount }),
+                });
+                if (!resp.ok) {
+                    const data = await resp.json();
+                    alert(data.error || 'Top-up failed');
+                    return;
+                }
+                const updated = await resp.json();
+                document.getElementById('cardBalance').value = updated.available_balance ?? '';
+                loadCards();
+            } catch (err) {
+                alert('Network error: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Top Up';
+            }
+        }
+
+        // Handle create card form submission
+        async function handleCreateCard(event) {
+            event.preventDefault();
+            const errDiv = document.getElementById('createCardError');
+            const btn = document.getElementById('createCardBtn');
+            errDiv.classList.add('hidden');
+            errDiv.textContent = '';
+
+            const panRaw = document.getElementById('cardPan').value.replace(/\s/g, '');
+            const expiry = document.getElementById('cardExpiry').value.trim();
+            let scheme = document.getElementById('cardScheme').value;
+            if (!scheme) scheme = detectScheme(panRaw) || 'VISA';
+            const creditLimit = parseInt(document.getElementById('cardCreditLimit')?.value || '0', 10) || 0;
+            const balance = parseInt(document.getElementById('cardBalance').value, 10) || 0;
+            const currencyCode = document.getElementById('cardCurrency')?.value || '949';
+            const pin = document.getElementById('cardPin')?.value || '';
+
+            if (!panRaw || panRaw.length < 13) {
+                errDiv.textContent = 'PAN must be at least 13 digits';
+                errDiv.classList.remove('hidden');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Creating...';
+            try {
+                const resp = await fetch('/v1/cards', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(Object.assign({
+                        pan: panRaw,
+                        expiry_date: expiry,
+                        scheme: scheme,
+                        currency_code: currencyCode,
+                        credit_limit: creditLimit,
+                        available_balance: balance
+                    }, pin ? { pin } : {}))
+                });
+                const data = await resp.json();
+                if (!resp.ok) {
+                    errDiv.textContent = data.error || 'Failed to create card';
+                    errDiv.classList.remove('hidden');
+                    return;
+                }
+                document.getElementById('cardPan').value = '';
+                loadCards();
+            } catch (err) {
+                errDiv.textContent = 'Network error: ' + err.message;
+                errDiv.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Card';
+            }
+        }
+
+        // Preload transaction data in background (History page renders on demand)
+        async function loadTransactions() {
+            try {
+                const resp = await fetch('/v1/transactions?limit=200');
+                if (!resp.ok) return;
+                const data = await resp.json();
+                _allTxData = data.transactions || [];
+                if (!document.getElementById('page-history')?.classList.contains('hidden')) {
+                    filterTxPage();
+                }
+            } catch (_) {}
+        }
+        // ── PAN session cache ────────────────────────────────────────────────
+        function getPANCache() {
+            try { return JSON.parse(sessionStorage.getItem('_panCache') || '{}'); }
+            catch { return {}; }
+        }
+        function savePANCache(id, pan, scheme) {
+            const c = getPANCache();
+            c[id] = { pan, scheme };
+            sessionStorage.setItem('_panCache', JSON.stringify(c));
+        }
+
+        // ── Card selector dropdown ───────────────────────────────────────────
+        function renderCardDropdown(query) {
+            const dd = document.getElementById('cardDropdown');
+            if (!dd) return;
+            const q = (query || '').toLowerCase().replace(/\s/g, '');
+            const scColor = s => s === 'VISA' ? 'text-blue-400' : s === 'MASTERCARD' ? 'text-orange-400' : 'text-cyan-400';
+            const matched = _allCards.map(c => {
+                const pan = c.pan || '';
+                const disp = pan ? pan.replace(/(\d{4})(?=\d)/g, '$1 ') : c.pan_masked;
+                const match = !q || disp.replace(/\s/g,'').includes(q) || (c.scheme||'').toLowerCase().includes(q);
+                return { c, pan, disp, match };
+            }).filter(x => x.match);
+            const shown = q ? matched : matched.slice(0, 20);
+            const extra = !q && matched.length > 20 ? matched.length - 20 : 0;
+            if (shown.length === 0) {
+                dd.innerHTML = '<div class="px-3 py-2 text-xs text-gray-500 italic">No cards found</div>';
+            } else {
+                dd.innerHTML = shown.map(({ c, pan, disp }) =>
+                    `<div class="px-3 py-1.5 hover:bg-[#1a1a1a] cursor-pointer"
+                         onmousedown="event.preventDefault(); selectCard('${pan}','${disp}','${c.id}')">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="font-mono text-xs text-gray-200 truncate">${disp}</span>
+                            <span class="text-[10px] font-mono text-gray-300 flex-shrink-0">${fmtBalance(c.available_balance)}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span class="text-[10px] text-gray-600">Lim <span class="text-gray-500">${fmtBalance(c.credit_limit)}</span></span>
+                            <span class="text-[10px] font-mono text-gray-600">${c.expiry_date}</span>
+                            <span class="text-[10px] font-medium ${scColor(c.scheme)}">${c.scheme}</span>
+                        </div>
+                    </div>`
+                ).join('') + (extra > 0 ? `<div class="px-3 py-1.5 text-[10px] text-gray-600 italic text-center border-t border-gray-800/50">+${extra} more — type to filter</div>` : '');
+            }
+        }
+
+        function openCardDropdown() {
+            const dd = document.getElementById('cardDropdown');
+            if (!dd) return;
+            renderCardDropdown('');
+            dd.classList.remove('hidden');
+            _dropdownOpen = true;
+        }
+
+        function closeCardDropdown() {
+            document.getElementById('cardDropdown')?.classList.add('hidden');
+            _dropdownOpen = false;
+        }
+
+        function filterCardDropdown(val) {
+            openCardDropdown();
+            renderCardDropdown(val);
+            const hidden = document.getElementById('pan');
+            if (hidden) hidden.value = val.replace(/\s/g, '');
+        }
+
+        function selectCard(fullPAN, displayPAN, _cardId) {
+            const fi = document.getElementById('cardFilter');
+            const hp = document.getElementById('pan');
+            if (fi) fi.value = displayPAN;
+            if (hp) hp.value = fullPAN || displayPAN.replace(/\s/g, '');
+            closeCardDropdown();
+            if (typeof updatePreview === 'function') updatePreview();
+        }
+
+        document.addEventListener('click', function(e) {
+            if (_dropdownOpen && !document.getElementById('cardSelectorWrapper')?.contains(e.target)) {
+                closeCardDropdown();
+            }
+        });
+
+        // ── Luhn & PAN generation ────────────────────────────────────────────
+        function luhnCheckDigit(digits) {
+            let sum = 0, alt = true;
+            for (let i = digits.length - 1; i >= 0; i--) {
+                let n = parseInt(digits[i], 10);
+                if (alt) { n *= 2; if (n > 9) n -= 9; }
+                sum += n; alt = !alt;
+            }
+            return (10 - (sum % 10)) % 10;
+        }
+
+        function generatePAN(scheme) {
+            const cfg = {
+                VISA:       { prefixes: ['4'],                    len: 16 },
+                MASTERCARD: { prefixes: ['51','52','53','54','55'], len: 16 },
+                TROY:       { prefixes: ['9792'],                 len: 16 },
+                AMEX:       { prefixes: ['34','37'],              len: 15 },
+            };
+            const s = cfg[scheme] ? scheme : 'VISA';
+            const pfx = cfg[s].prefixes[Math.floor(Math.random() * cfg[s].prefixes.length)];
+            let d = pfx;
+            while (d.length < cfg[s].len - 1) d += Math.floor(Math.random() * 10);
+            return d + luhnCheckDigit(d);
+        }
+
+        function detectScheme(pan) {
+            const d = pan.replace(/\s/g, '');
+            if (/^4/.test(d)) return 'VISA';
+            if (/^(51|52|53|54|55|2[2-7]\d{2})/.test(d)) return 'MASTERCARD';
+            if (/^(34|37)/.test(d)) return 'AMEX';
+            if (/^9/.test(d)) return 'TROY';
+            return '';
+        }
+
+        // ── Cards tab event handlers ─────────────────────────────────────────
+        function onSchemeChange() {
+            const schemes = ['VISA', 'MASTERCARD', 'TROY'];
+            let scheme = document.getElementById('cardScheme')?.value;
+            if (!scheme) scheme = schemes[Math.floor(Math.random() * schemes.length)];
+            const pan = generatePAN(scheme);
+            const inp = document.getElementById('cardPan');
+            if (inp) inp.value = pan.replace(/(\d{4})(?=\d)/g, '$1 ');
+        }
+
+        function onCardPanInput(val) {
+            const scheme = detectScheme(val);
+            if (!scheme) return;
+            const sel = document.getElementById('cardScheme');
+            if (sel && sel.value !== scheme) sel.value = scheme;
+        }
+        // ── Page navigation ──────────────────────────────────────────────────
+        function switchPage(name) {
+            const pages = ['transaction', 'cards', 'history'];
+            const activeColor = {
+                transaction: 'bg-emerald-500/10 text-emerald-400',
+                cards:       'bg-cyan-500/10 text-cyan-400',
+                history:     'bg-purple-500/10 text-purple-400',
+            };
+            const base = 'w-9 h-9 rounded-lg flex flex-col items-center justify-center gap-0.5 transition-all';
+            pages.forEach(p => {
+                const page = document.getElementById('page-' + p);
+                const nav  = document.getElementById('nav-' + p);
+                if (p === name) {
+                    if (page) page.style.display = '';
+                    if (nav) nav.className = base + ' ' + activeColor[p];
+                } else {
+                    if (page) page.style.display = 'none';
+                    if (nav) nav.className = base + ' text-gray-500 hover:text-gray-400 hover:bg-gray-800/40';
+                }
+            });
+            if (name === 'cards')   loadCards();
+            if (name === 'history') loadTxPage();
+        }
+
+        // ── Cards page render & filter ───────────────────────────────────────
+        function renderCardsPage(cards) {
+            const container = document.getElementById('cardsList');
+            if (!container) return;
+            const countEl = document.getElementById('cardsPageCount');
+            if (countEl) countEl.textContent = `(${_allCards.length})`;
+            if (cards.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-600 text-center py-8">No cards</p>';
+                return;
+            }
+            const scBadge  = s => s === 'VISA'       ? 'text-blue-300 bg-blue-500/10 border border-blue-500/20'
+                                : s === 'MASTERCARD' ? 'text-orange-300 bg-orange-500/10 border border-orange-500/20'
+                                : s === 'TROY'       ? 'text-cyan-300 bg-cyan-500/10 border border-cyan-500/20'
+                                :                     'text-purple-300 bg-purple-500/10 border border-purple-500/20';
+            const stBadge  = s => s === 'ACTIVE' ? 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/20'
+                                :                  'text-red-300 bg-red-500/10 border border-red-500/20';
+            const stBorder = s => s === 'ACTIVE' ? 'border-l-emerald-500' : 'border-l-red-500';
+            container.innerHTML = cards.map((c, idx) => {
+                const pan  = c.pan || '';
+                const disp = pan ? pan.replace(/(\d{4})(?=\d)/g, '$1 ') : c.pan_masked;
+                const allIdx = _allCards.findIndex(x => x.id === c.id);
+                return `<div class="border border-gray-800/40 border-l-2 ${stBorder(c.status)} bg-[#0a0a0a] hover:bg-[#0f0f0f] rounded-md px-3 py-2.5 cursor-pointer transition-colors flex items-center gap-3 min-w-0"
+                    onmousedown="enterEditMode(_allCards[${allIdx}])">
+                    <span class="font-mono text-sm text-gray-100 tracking-wider w-44 flex-shrink-0">${disp}</span>
+                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${scBadge(c.scheme)} flex-shrink-0">${c.scheme}</span>
+                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded ${stBadge(c.status)} flex-shrink-0">${c.status}</span>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0">Exp&thinsp;<span class="font-mono text-gray-300">${c.expiry_date}</span></span>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0">Limit&thinsp;<span class="font-mono text-gray-300">${fmtBalance(c.credit_limit)}</span></span>
+                    <span class="text-[10px] text-gray-600 ml-auto flex-shrink-0">Bal&thinsp;<span class="font-mono font-semibold text-gray-100">${fmtBalance(c.available_balance)}</span></span>
+                </div>`;
+            }).join('');
+        }
+
+        function filterCardsPage(query) {
+            const q = (query || '').toLowerCase().replace(/\s/g, '');
+            const filtered = q ? _allCards.filter(c => {
+                const pan = (c.pan || c.pan_masked || '').replace(/[\s*]/g, '');
+                return pan.includes(q)
+                    || (c.scheme || '').toLowerCase().includes(q)
+                    || (c.status || '').toLowerCase().includes(q);
+            }) : _allCards;
+            renderCardsPage(filtered);
+        }
+
+        const RC_DESC = {
+            '00':'Approved','01':'Refer to issuer','05':'Do not honor','12':'Invalid transaction',
+            '13':'Invalid amount','14':'Invalid card number','30':'Format error','41':'Lost card',
+            '43':'Stolen card','51':'Insufficient funds','54':'Expired card','55':'Incorrect PIN',
+            '57':'Transaction not permitted','58':'Terminal not permitted','61':'Exceeds amount limit',
+            '62':'Restricted card','63':'Security violation','65':'Exceeds frequency limit',
+            '75':'PIN retries exceeded','78':'No account','91':'Issuer unavailable','96':'System malfunction'
+        };
+
+        // ── History page ─────────────────────────────────────────────────────
+        async function loadTxPage() {
+            const container = document.getElementById('txPageList');
+            if (!container) return;
+            container.innerHTML = '<p class="text-xs text-gray-600 text-center py-8">Loading...</p>';
+            try {
+                const [acqResp, issResp] = await Promise.all([
+                    fetch('/v1/transactions?limit=200'),
+                    fetch('/v1/issuer-transactions?limit=200'),
+                ]);
+                if (acqResp.ok) _allTxData = (await acqResp.json()).transactions || [];
+                if (issResp.ok) _allIssuerTxData = (await issResp.json()).transactions || [];
+                filterTxPage();
+            } catch (err) {
+                container.innerHTML = `<p class="text-xs text-red-400 text-center py-8">${err.message}</p>`;
+            }
+        }
+
+        function setTxSource(src) {
+            _txSource = src;
+            const acqBtn = document.getElementById('txSrcAcq');
+            const issBtn = document.getElementById('txSrcIss');
+            const on  = 'px-2.5 py-1 bg-cyan-600/20 text-cyan-300 border-r border-gray-700/50 transition-colors';
+            const off = 'px-2.5 py-1 text-gray-500 hover:text-gray-300 transition-colors';
+            if (acqBtn) acqBtn.className = src === 'acq' ? on : off.replace('border-r border-gray-700/50 ','');
+            if (issBtn) issBtn.className = src === 'iss' ? 'px-2.5 py-1 bg-cyan-600/20 text-cyan-300 transition-colors' : off;
+            filterTxPage();
+        }
+
+        function fmtDuration(createdAt, updatedAt) {
+            if (!createdAt || !updatedAt) return '-';
+            try {
+                const ms = new Date(updatedAt) - new Date(createdAt);
+                if (ms < 0) return '-';
+                return ms + 'ms';
+            } catch (_) { return '-'; }
+        }
+
+        function filterTxPage() {
+            const container = document.getElementById('txPageList');
+            if (!container) return;
+            const statusF = document.getElementById('txStatusFilter')?.value || '';
+            const panF    = (document.getElementById('txPanFilter')?.value || '').toLowerCase().replace(/\s/g, '');
+            const isIss   = _txSource === 'iss';
+            let source    = isIss ? _allIssuerTxData : _allTxData;
+            let filtered  = source;
+            if (statusF) filtered = filtered.filter(tx => tx.Status === statusF);
+            if (panF)    filtered = filtered.filter(tx =>
+                (tx.PANMasked || '').replace(/[\s*]/g, '').includes(panF) ||
+                (tx.STAN || '').includes(panF)
+            );
+            const countEl = document.getElementById('txPageCount');
+            if (countEl) countEl.textContent = `(${filtered.length})`;
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-xs text-gray-600 text-center py-8">No transactions</p>';
+                return;
+            }
+            const stBadge  = s => s === 'APPROVED' ? 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/20'
+                                : s === 'PENDING'  ? 'text-yellow-300 bg-yellow-500/10 border border-yellow-500/20'
+                                : s === 'RECEIVED' ? 'text-blue-300 bg-blue-500/10 border border-blue-500/20'
+                                : s === 'ERROR'    ? 'text-orange-300 bg-orange-500/10 border border-orange-500/20'
+                                :                   'text-red-300 bg-red-500/10 border border-red-500/20';
+            const stBorder = s => s === 'APPROVED' ? 'border-l-emerald-500'
+                                : s === 'PENDING'  ? 'border-l-yellow-500'
+                                : s === 'RECEIVED' ? 'border-l-blue-500'
+                                : s === 'ERROR'    ? 'border-l-orange-500'
+                                :                   'border-l-red-500';
+            const rcCls    = rc => rc === '00' ? 'text-emerald-300 font-semibold' : rc ? 'text-red-300 font-semibold' : 'text-gray-600';
+            container.innerHTML = filtered.map(tx => {
+                const origIdx = source.findIndex(t => t.ID === tx.ID);
+                const rcDesc  = tx.ResponseCode ? (RC_DESC[tx.ResponseCode] || '') : '';
+                const extraCol = isIss
+                    ? (tx.DeclineReason
+                        ? `<span class="text-gray-600 flex-shrink-0 italic">${tx.DeclineReason}</span>`
+                        : (tx.AuthCode
+                            ? `<span class="text-gray-600 flex-shrink-0">Auth&thinsp;<span class="font-mono text-emerald-300">${tx.AuthCode}</span></span>`
+                            : ''))
+                    : '';
+                return `<div class="border border-gray-800/40 border-l-2 ${stBorder(tx.Status)} bg-[#0a0a0a] hover:bg-[#0f0f0f] rounded-md px-3 py-2.5 cursor-pointer transition-colors flex items-center gap-3 min-w-0 text-[10px]"
+                     onmousedown="openTxDetail(${origIdx}, '${isIss ? 'iss' : 'acq'}')">
+                    <span class="font-semibold px-1.5 py-0.5 rounded flex-shrink-0 ${stBadge(tx.Status)} text-[9px] tracking-wide">${tx.Status || '-'}</span>
+                    <span class="font-mono text-gray-200 w-36 flex-shrink-0">${tx.PANMasked || '-'}</span>
+                    <span class="text-gray-600 flex-shrink-0" title="${rcDesc}">RC&thinsp;<span class="font-mono ${rcCls(tx.ResponseCode)}">${tx.ResponseCode || '-'}</span>${rcDesc ? `<span class="text-gray-600 ml-0.5">(${rcDesc})</span>` : ''}</span>
+                    <span class="text-gray-600 flex-shrink-0">MTI&thinsp;<span class="font-mono text-gray-300">${tx.MTI || '-'}</span></span>
+                    <span class="text-gray-600 flex-shrink-0">STAN&thinsp;<span class="font-mono text-gray-300">${tx.STAN || '-'}</span></span>
+                    ${extraCol}
+                    <span class="text-gray-600 flex-shrink-0">&rarr;&thinsp;<span class="font-mono text-gray-400">${fmtTime(tx.CreatedAt)}</span></span>
+                    <span class="text-gray-700 flex-shrink-0">${isIss && tx.ProcessingTimeMs != null ? tx.ProcessingTimeMs.toFixed(1)+'ms' : fmtDuration(tx.CreatedAt, tx.UpdatedAt)}</span>
+                    <span class="ml-auto font-mono font-semibold text-gray-100 flex-shrink-0">${tx.Amount != null ? fmtBalance(tx.Amount) : '-'}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function clearTxFilters() {
+            const s = document.getElementById('txStatusFilter');
+            const p = document.getElementById('txPanFilter');
+            if (s) s.value = '';
+            if (p) p.value = '';
+            filterTxPage();
+        }
+
+        // ── ISO 8583 Slide-Over ──────────────────────────────────────────────
+        const DE_NAMES = {
+            2:'PAN', 3:'Processing Code', 4:'Transaction Amount', 5:'Settlement Amount',
+            6:'Billing Amount', 7:'Transmission Date & Time', 9:'Conv Rate Settlement',
+            10:'Conv Rate Billing', 11:'STAN', 12:'Local Time', 13:'Local Date',
+            14:'Expiry Date', 15:'Settlement Date', 16:'Currency Conv Date',
+            18:'Merchant Category', 22:'POS Entry Mode', 25:'POS Condition Code',
+            26:'POS PIN Capture', 32:'Acquiring Institution ID', 35:'Track 2 Data',
+            37:'RRN', 38:'Auth Response ID', 39:'Response Code', 41:'Terminal ID',
+            42:'Merchant ID', 43:'Merchant Location', 47:'Additional Data (Nat)',
+            48:'Additional Data (Priv)', 49:'Transaction Currency', 51:'Billing Currency',
+            52:'PIN Data', 53:'Security Info', 54:'Additional Amounts',
+            61:'Private Data 2', 63:'Reserved Private', 70:'Network Management Info'
+        };
+        const MTI_DESC = {
+            '0100':'Auth Request','0110':'Auth Response',
+            '0200':'Financial Request','0210':'Financial Response',
+            '0400':'Reversal Request','0410':'Reversal Response',
+            '0800':'Network Mgmt Request','0810':'Network Mgmt Response'
+        };
+
+        function openTxDetail(idx, src) {
+            const isIss = (src || _txSource) === 'iss';
+            _txDetailData = isIss ? _allIssuerTxData[idx] : _allTxData[idx];
+            _txDetailData = _txDetailData ? Object.assign({}, _txDetailData, { _isIss: isIss }) : null;
+            if (!_txDetailData) return;
+            const tx = _txDetailData;
+            const backdrop = document.getElementById('txDetailBackdrop');
+            const panel    = document.getElementById('txDetailPanel');
+            backdrop.style.display = '';
+            panel.style.display = 'flex';
+            panel.style.transform = 'translateX(100%)';
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                panel.style.transform = 'translateX(0)';
+            }));
+            document.getElementById('txDetailSubtitle').textContent =
+                `${isIss ? 'Issuer' : 'Acquirer'}  ·  ${tx.PANMasked || '-'}  ·  STAN ${tx.STAN || '-'}  ·  ${tx.Status || '-'}`;
+            const stCol  = s => s === 'APPROVED' ? '#34d399' : s === 'DECLINED' ? '#f87171' : s === 'ERROR' ? '#fb923c' : s === 'RECEIVED' ? '#60a5fa' : '#facc15';
+            const rcCol  = rc => rc === '00' ? '#34d399' : '#f87171';
+            const rcDesc = tx.ResponseCode ? (RC_DESC[tx.ResponseCode] || '') : '';
+            const rcHtml = tx.ResponseCode
+                ? `<span style="color:${rcCol(tx.ResponseCode)};font-weight:600">${tx.ResponseCode}</span>${rcDesc ? `<span style="color:#6b7280"> ${rcDesc}</span>` : ''}`
+                : '<span style="color:#4b5563">-</span>';
+            let extraHtml = '';
+            if (isIss) {
+                if (tx.AuthCode)      extraHtml += `<span style="color:#374151">·</span><span style="color:#4b5563">Auth&thinsp;<span style="color:#34d399;font-weight:600">${tx.AuthCode}</span></span>`;
+                if (tx.DeclineReason) extraHtml += `<span style="color:#374151">·</span><span style="color:#ef4444;font-style:italic">${tx.DeclineReason}</span>`;
+                if (tx.BalanceBefore != null) extraHtml += `<span style="color:#374151">·</span><span style="color:#4b5563">Bal&thinsp;${fmtBalance(tx.BalanceBefore)}&rarr;<span style="font-weight:600;color:#f3f4f6">${fmtBalance(tx.BalanceAfter)}</span></span>`;
+                if (tx.ProcessingTimeMs != null) extraHtml += `<span style="color:#374151">·</span><span style="color:#6b7280">${tx.ProcessingTimeMs.toFixed(1)}ms</span>`;
+            }
+            document.getElementById('txDetailSummary').innerHTML =
+                `<span style="color:#4b5563">Status&thinsp;<span style="color:${stCol(tx.Status)};font-weight:600">${tx.Status||'-'}</span></span>` +
+                `<span style="color:#374151">·</span>` +
+                `<span style="color:#4b5563">RC&thinsp;${rcHtml}</span>` +
+                `<span style="color:#374151">·</span>` +
+                `<span style="color:#4b5563">MTI&thinsp;<span style="color:#d1d5db">${tx.MTI||'-'}</span></span>` +
+                `<span style="color:#374151">·</span>` +
+                `<span style="color:#4b5563">Amt&thinsp;<span style="color:#f3f4f6;font-weight:600">${tx.Amount != null ? fmtBalance(tx.Amount) : '-'}</span></span>` +
+                extraHtml;
+            if (isIss) {
+                renderIssuerTxDetail(tx);
+            } else {
+                switchTxDetailTab('req');
+            }
+        }
+
+        function closeTxDetail() {
+            const panel    = document.getElementById('txDetailPanel');
+            const backdrop = document.getElementById('txDetailBackdrop');
+            panel.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                panel.style.display = 'none';
+                backdrop.style.display = 'none';
+            }, 310);
+        }
+
+        function switchTxDetailTab(tab) {
+            _txDetailTab = tab;
+            const on  = 'px-5 py-2.5 text-xs text-white border-b-2 border-cyan-500 transition-colors';
+            const off = 'px-5 py-2.5 text-xs text-gray-500 border-b-2 border-transparent hover:text-gray-300 transition-colors';
+            document.getElementById('txDetailTabReq').className  = tab === 'req'  ? on : off;
+            document.getElementById('txDetailTabResp').className = tab === 'resp' ? on : off;
+            renderTxDetailTab();
+        }
+
+        function renderTxDetailTab() {
+            if (!_txDetailData) return;
+            const hexStr  = _txDetailTab === 'req' ? (_txDetailData.RequestHex || '') : (_txDetailData.ResponseHex || '');
+            const content = document.getElementById('txDetailContent');
+            if (!hexStr) {
+                content.innerHTML = '<p class="text-gray-600 text-center py-12">No data available</p>';
+                return;
+            }
+            content.innerHTML = renderISO8583Panel(hexStr, parseISO8583Hex(hexStr));
+        }
+
+        function parseISO8583Hex(h) {
+            // MTI = 4 ASCII bytes (encoding.ASCII) = 8 hex chars
+            // Bitmap = 8 binary bytes (encoding.Binary) = 16 hex chars
+            if (!h || h.length < 24) return null;
+            h = h.toLowerCase();
+            // Decode 4-byte ASCII MTI from 8 hex chars (e.g. "30323030" → "0200")
+            const mtiRaw = h.slice(0, 8);
+            let mtiStr = '';
+            for (let i = 0; i < 8; i += 2)
+                mtiStr += String.fromCharCode(parseInt(mtiRaw.slice(i, i+2), 16));
+            // Primary bitmap at offset 8 (16 hex chars = 8 binary bytes)
+            const primaryHex = h.slice(8, 24);
+            const pb = [];
+            for (let i = 0; i < 16; i += 2) pb.push(parseInt(primaryHex.slice(i, i+2), 16));
+            const hasSec = (pb[0] & 0x80) !== 0;
+            let secHex = '', sb = [];
+            if (hasSec && h.length >= 40) {
+                secHex = h.slice(24, 40);
+                for (let i = 0; i < 16; i += 2) sb.push(parseInt(secHex.slice(i, i+2), 16));
+            }
+            const allBytes = hasSec ? [...pb, ...sb] : pb;
+            const setBits = [];
+            for (let b = 0; b < allBytes.length; b++)
+                for (let bit = 7; bit >= 0; bit--)
+                    if ((allBytes[b] >> bit) & 1) { const de = b*8+(8-bit); if (de > 1) setBits.push(de); }
+            return { mtiStr, mtiRaw, primaryHex, secHex, hasSec, setBits };
+        }
+
+        function bitmapBitsHtml(bitmapHex, byteOffset) {
+            const bytes = [];
+            for (let i = 0; i < bitmapHex.length; i += 2)
+                bytes.push(parseInt(bitmapHex.slice(i, i+2), 16));
+            return bytes.map((byte, bi) =>
+                '<span class="inline-block mr-2 tracking-widest">' +
+                Array.from({length:8}, (_, k) => {
+                    const bit  = 7 - k;
+                    const isSet = (byte >> bit) & 1;
+                    const de   = (byteOffset + bi) * 8 + (8 - bit);
+                    return `<span class="${isSet ? 'text-cyan-400' : 'text-gray-700'}" title="DE${de}">${isSet ? '1' : '0'}</span>`;
+                }).join('') + '</span>'
+            ).join('');
+        }
+
+        function formatHexDump(hexStr) {
+            const lines = [];
+            for (let i = 0; i < hexStr.length; i += 32) {
+                const chunk = hexStr.slice(i, i+32);
+                const pairs = (chunk.match(/.{1,2}/g)||[]).map(p => p.toUpperCase());
+                const off   = (i/2).toString(16).padStart(4,'0').toUpperCase();
+                lines.push(`<span class="select-none" style="color:#374151">${off}  </span><span style="color:#9ca3af">${pairs.join(' ')}</span>`);
+            }
+            return lines.join('\n');
+        }
+
+        function renderIssuerTxDetail(tx) {
+            const tabReq  = document.getElementById('txDetailTabReq');
+            const tabResp = document.getElementById('txDetailTabResp');
+            const dimCls  = 'px-5 py-2.5 text-xs text-gray-700 border-b-2 border-transparent opacity-40 cursor-default';
+            if (tabReq)  tabReq.className  = dimCls;
+            if (tabResp) tabResp.className = dimCls;
+            const content = document.getElementById('txDetailContent');
+            if (!content) return;
+            const row = (label, val, valCls) =>
+                `<div class="flex gap-3 text-[11px] border-b border-gray-800/40 pb-1.5">
+                    <span class="text-gray-600 w-32 flex-shrink-0">${label}</span>
+                    <span class="font-mono ${valCls||'text-gray-200'}">${val ?? '-'}</span>
+                </div>`;
+            const rcDesc  = tx.ResponseCode ? (RC_DESC[tx.ResponseCode] || '') : '';
+            const rcDisp  = tx.ResponseCode ? `${tx.ResponseCode}${rcDesc ? ' — ' + rcDesc : ''}` : '-';
+            const rcCls   = tx.ResponseCode === '00' ? 'text-emerald-300 font-semibold' : tx.ResponseCode ? 'text-red-300 font-semibold' : 'text-gray-600';
+            content.innerHTML = `<div class="space-y-1.5">
+                ${row('MTI', tx.MTI)}
+                ${row('STAN', tx.STAN)}
+                ${row('PAN (masked)', tx.PANMasked)}
+                ${row('Status', tx.Status)}
+                ${row('Response Code', rcDisp, rcCls)}
+                ${tx.AuthCode      ? row('Auth Code',      tx.AuthCode,       'text-emerald-300 font-semibold') : ''}
+                ${tx.DeclineReason ? row('Decline Reason', tx.DeclineReason,  'text-red-300 italic')           : ''}
+                ${row('Amount', tx.Amount != null ? fmtBalance(tx.Amount) : '-')}
+                ${row('Currency', tx.CurrencyCode)}
+                ${tx.BalanceBefore != null ? row('Balance Before', fmtBalance(tx.BalanceBefore)) : ''}
+                ${tx.BalanceAfter  != null ? row('Balance After',  fmtBalance(tx.BalanceAfter), 'text-gray-100 font-semibold') : ''}
+                ${tx.ProcessingTimeMs != null ? row('Processing Time', tx.ProcessingTimeMs.toFixed(2) + ' ms') : ''}
+                ${row('Created', tx.CreatedAt ? new Date(tx.CreatedAt).toLocaleString('tr-TR') : '-')}
+            </div>`;
+        }
+
+        function renderISO8583Panel(hexStr, parsed) {
+            const totalBytes = hexStr.length / 2;
+            if (!parsed) {
+                return `<div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-widest mb-2">Raw Hex — ${totalBytes} bytes</div>
+                    <pre class="leading-6 overflow-x-auto rounded p-3 text-[11px]" style="background:#050505">${formatHexDump(hexStr)}</pre>
+                </div>`;
+            }
+            const mtiDesc = MTI_DESC[parsed.mtiStr] || '';
+            return `<div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-widest mb-1.5">MTI <span class="normal-case text-gray-700 ml-1">(${parsed.mtiRaw.toUpperCase()})</span></div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-base tracking-widest" style="color:#fde68a">${parsed.mtiStr}</span>
+                        ${mtiDesc ? `<span class="text-gray-500 text-xs">${mtiDesc}</span>` : ''}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-widest mb-1.5">
+                        Primary Bitmap — DE 1–64&ensp;<span class="normal-case text-gray-700">${parsed.primaryHex.toUpperCase()}</span>
+                    </div>
+                    <div class="leading-7 text-sm">${bitmapBitsHtml(parsed.primaryHex, 0)}</div>
+                </div>
+                ${parsed.hasSec ? `<div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-widest mb-1.5">
+                        Secondary Bitmap — DE 65–128&ensp;<span class="normal-case text-gray-700">${parsed.secHex.toUpperCase()}</span>
+                    </div>
+                    <div class="leading-7 text-sm">${bitmapBitsHtml(parsed.secHex, 8)}</div>
+                </div>` : ''}
+                <div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-widest mb-2">Active Data Elements — ${parsed.setBits.length} fields</div>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${parsed.setBits.map(de =>
+                            `<span class="text-[10px] px-2 py-1 rounded border" style="background:#0a0a0a;border-color:#1f2937">` +
+                            `<span style="color:#67e8f9;font-weight:700">DE${String(de).padStart(2,'0')}</span>` +
+                            (DE_NAMES[de] ? `<span style="color:#374151"> · </span><span style="color:#9ca3af">${DE_NAMES[de]}</span>` : '') +
+                            `</span>`
+                        ).join('')}
+                    </div>
+                </div>
+                <div>
+                    <div class="text-gray-600 text-[10px] uppercase tracking-widest mb-2">Raw Hex — ${totalBytes} bytes</div>
+                    <pre class="leading-6 overflow-x-auto rounded p-3 text-[11px]" style="background:#050505">${formatHexDump(hexStr)}</pre>
+                </div>`;
+        }
     </script>
 </body>
 </html>

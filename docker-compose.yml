@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: paymentlab
+      POSTGRES_USER: paymentlab
+      POSTGRES_PASSWORD: paymentlab
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  issuer:
+    build:
+      context: .
+      dockerfile: Dockerfile.issuer
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgres://paymentlab:paymentlab@postgres:5432/paymentlab?sslmode=disable
+      ISSUER_LISTEN: 0.0.0.0:5001
+    depends_on:
+      - postgres
+
+  acquirer:
+    build:
+      context: .
+      dockerfile: Dockerfile.acquirer
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://paymentlab:paymentlab@postgres:5432/paymentlab?sslmode=disable
+      ISSUER_ADDR: issuer:5001
+      ACQUIRER_PORT: 8081
+    depends_on:
+      - postgres
+      - issuer
+
+volumes:
+  pgdata:

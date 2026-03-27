@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,18 +13,20 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 
+	"iso-parser-service/internal/card"
 	"iso-parser-service/internal/iso"
+	"iso-parser-service/internal/store"
 )
 
 type HTTPServer struct {
-	issuerClient   IssuerClient
 	switchInstance *AcquirerSwitch
+	appStore       store.Store
 }
 
-func NewHTTPServer(client IssuerClient, switchInstance *AcquirerSwitch) *HTTPServer {
+func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPServer {
 	return &HTTPServer{
-		issuerClient:   client,
 		switchInstance: switchInstance,
+		appStore:       appStore,
 	}
 }
 
@@ -57,9 +60,102 @@ func (s *HTTPServer) Router() *gin.Engine {
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
+
+	router.POST("/v1/cards", s.handleCreateCard)
+	router.GET("/v1/cards", s.handleListCards)
+	router.PUT("/v1/cards/:id", s.handleUpdateCard)
+	router.DELETE("/v1/cards/:id", s.handleDeleteCard)
+	router.POST("/v1/cards/:id/topup", s.handleTopUpCard)
 	router.POST("/v1/transaction", s.handleTransaction)
+	router.GET("/v1/transactions", s.handleListTransactions)
+	router.GET("/v1/issuer-transactions", s.handleListIssuerTransactions)
 
 	return router
+}
+
+func (s *HTTPServer) handleCreateCard(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+
+	var req card.CreateCardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request JSON"})
+		return
+	}
+
+	svc := card.NewService(s.appStore)
+	resp, err := svc.CreateCard(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, resp)
+}
+
+func (s *HTTPServer) handleListCards(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+
+	limit := 50
+	offset := 0
+	if v := strings.TrimSpace(c.Query("limit")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
+	if v := strings.TrimSpace(c.Query("offset")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			offset = n
+		}
+	}
+
+	svc := card.NewService(s.appStore)
+	resp, err := svc.ListCards(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"cards": resp})
+}
+
+func (s *HTTPServer) handleUpdateCard(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+	id := c.Param("id")
+	var req card.UpdateCardRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request JSON"})
+		return
+	}
+	svc := card.NewService(s.appStore)
+	resp, err := svc.UpdateCard(c.Request.Context(), id, req)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (s *HTTPServer) handleDeleteCard(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+	id := c.Param("id")
+	svc := card.NewService(s.appStore)
+	if err := svc.DeleteCard(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"deleted": true})
 }
 
 func (s *HTTPServer) handleTransaction(c *gin.Context) {
@@ -96,6 +192,43 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		attribute.String("transaction.pan_masked", maskPAN(req.PAN)),
 	)
 
+	var txID *string
+	if s.appStore != nil {
+		amount, amountErr := parseAmount12(req.AmountTrn)
+		if amountErr != nil {
+			amount = 0
+		}
+
+		var terminalID *string
+		if strings.TrimSpace(req.TerminalID) != "" {
+			t := strings.TrimSpace(req.TerminalID)
+			terminalID = &t
+		}
+		var merchantID *string
+		if strings.TrimSpace(req.MerchantID) != "" {
+			m := strings.TrimSpace(req.MerchantID)
+			merchantID = &m
+		}
+
+		tx := &store.AcquirerTransaction{
+			STAN:         strings.TrimSpace(req.STAN),
+			MTI:          strings.TrimSpace(req.MTI),
+			PANMasked:    maskPAN(req.PAN),
+			Amount:       amount,
+			CurrencyCode: strings.TrimSpace(req.CurCodeTrn),
+			TerminalID:   terminalID,
+			MerchantID:   merchantID,
+			Status:       store.TransactionStatus("PENDING"),
+			RequestHex:   &hexReq,
+		}
+
+		created, err := s.appStore.AcquirerTransactions().CreateAcquirerTransaction(ctx, tx)
+		if err == nil && created != nil {
+			id := created.ID
+			txID = &id
+		}
+	}
+
 	// Convert hex string to raw bytes for Switch
 	rawISOBytes, err := hex.DecodeString(hexReq)
 	if err != nil {
@@ -110,6 +243,9 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	// Use Switch for TPDU-based communication
 	response, err := s.switchInstance.HandleTerminalRequest(ctx, rawISOBytes)
 	if err != nil {
+		if s.appStore != nil && txID != nil {
+			_ = s.appStore.AcquirerTransactions().UpdateAcquirerTransactionStatus(ctx, *txID, store.TransactionStatus("ERROR"), nil, nil)
+		}
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "switch_communication_error"),
@@ -123,12 +259,24 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 
 	respMsg, err := iso.ParseHexToMessage(hexResp)
 	if err != nil {
+		if s.appStore != nil && txID != nil {
+			_ = s.appStore.AcquirerTransactions().UpdateAcquirerTransactionStatus(ctx, *txID, store.TransactionStatus("ERROR"), nil, &hexResp)
+		}
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "response_parse_error"),
 		)
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("issuer response parse error: %v", err)})
 		return
+	}
+
+	if s.appStore != nil && txID != nil {
+		status := store.TransactionStatus("DECLINED")
+		if respMsg.RespCode == "00" {
+			status = store.TransactionStatus("APPROVED")
+		}
+		rc := respMsg.RespCode
+		_ = s.appStore.AcquirerTransactions().UpdateAcquirerTransactionStatus(ctx, *txID, status, &rc, &hexResp)
 	}
 
 	// Record metrics
@@ -147,6 +295,103 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		"response_hex": hexResp,
 		"response":     respMsg,
 	})
+}
+
+func (s *HTTPServer) handleTopUpCard(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+	id := c.Param("id")
+	var body struct {
+		Amount int64 `json:"amount"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil || body.Amount <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be a positive integer"})
+		return
+	}
+	svc := card.NewService(s.appStore)
+	resp, err := svc.TopUp(c.Request.Context(), id, body.Amount)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+func (s *HTTPServer) handleListTransactions(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+
+	limit := 50
+	offset := 0
+	if v := strings.TrimSpace(c.Query("limit")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
+	if v := strings.TrimSpace(c.Query("offset")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			offset = n
+		}
+	}
+
+	txs, err := s.appStore.AcquirerTransactions().ListAcquirerTransactions(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	if txs == nil {
+		txs = []store.AcquirerTransaction{}
+	}
+	c.JSON(http.StatusOK, gin.H{"transactions": txs})
+}
+
+func (s *HTTPServer) handleListIssuerTransactions(c *gin.Context) {
+	if s.appStore == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
+		return
+	}
+
+	limit := 50
+	offset := 0
+	if v := strings.TrimSpace(c.Query("limit")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			limit = n
+		}
+	}
+	if v := strings.TrimSpace(c.Query("offset")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			offset = n
+		}
+	}
+
+	txs, err := s.appStore.IssuerTransactions().ListIssuerTransactions(c.Request.Context(), limit, offset)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+		return
+	}
+	if txs == nil {
+		txs = []store.IssuerTransaction{}
+	}
+	c.JSON(http.StatusOK, gin.H{"transactions": txs})
+}
+
+func parseAmount12(s string) (int64, error) {
+	if len(s) != 12 {
+		return 0, fmt.Errorf("amount must be 12 digits")
+	}
+	var v int64
+	for i := 0; i < 12; i++ {
+		b := s[i]
+		if b < '0' || b > '9' {
+			return 0, fmt.Errorf("amount must be digits")
+		}
+		v = v*10 + int64(b-'0')
+	}
+	return v, nil
 }
 
 // maskPAN masks the PAN for logging/tracing

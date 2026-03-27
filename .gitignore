@@ -20,9 +20,10 @@ go.work.sum
 .env
 .env.local
 
-# IDE
+# IDE / Windsurf
 .vscode/
 .idea/
+.windsurf/
 *.swp
 *.swo
 *~
