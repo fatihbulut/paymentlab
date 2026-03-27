@@ -11,15 +11,6 @@ jobs:
   deploy-issuer:
     name: Deploy → Issuer Server
     runs-on: ubuntu-latest
-    if: |
-      contains(toJson(github.event.commits), '"cmd/issuer/') ||
-      contains(toJson(github.event.commits), '"internal/issuer/') ||
-      contains(toJson(github.event.commits), '"internal/iso/') ||
-      contains(toJson(github.event.commits), '"internal/auth/') ||
-      contains(toJson(github.event.commits), '"internal/transport/') ||
-      contains(toJson(github.event.commits), '"internal/store/') ||
-      contains(toJson(github.event.commits), '"go.mod') ||
-      github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@v4
@@ -61,15 +52,6 @@ jobs:
   deploy-acquirer:
     name: Deploy → Acquirer Server
     runs-on: ubuntu-latest
-    if: |
-      contains(toJson(github.event.commits), '"cmd/acquirer/') ||
-      contains(toJson(github.event.commits), '"internal/acquirer/') ||
-      contains(toJson(github.event.commits), '"internal/iso/') ||
-      contains(toJson(github.event.commits), '"internal/transport/') ||
-      contains(toJson(github.event.commits), '"internal/store/') ||
-      contains(toJson(github.event.commits), '"web/') ||
-      contains(toJson(github.event.commits), '"go.mod') ||
-      github.event_name == 'workflow_dispatch'
 
     steps:
       - uses: actions/checkout@v4
