@@ -8,7 +8,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -24,7 +26,16 @@ func ServeTCP(addr string, svc *Service) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("issuer: listening on %s (worker pool: 50)", addr)
+
+	// Get worker pool size from environment (default: 1000)
+	workerPoolSize := 1000
+	if poolEnv := os.Getenv("ISSUER_WORKER_POOL"); poolEnv != "" {
+		if size, err := strconv.Atoi(poolEnv); err == nil && size > 0 {
+			workerPoolSize = size
+		}
+	}
+
+	log.Printf("issuer: listening on %s (worker pool: %d)", addr, workerPoolSize)
 
 	for {
 		conn, err := ln.Accept()
@@ -32,16 +43,16 @@ func ServeTCP(addr string, svc *Service) error {
 			log.Printf("issuer: accept error: %v", err)
 			continue
 		}
-		go handleConn(conn, svc)
+		go handleConn(conn, svc, workerPoolSize)
 	}
 }
 
-func handleConn(conn net.Conn, svc *Service) {
+func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 	defer conn.Close()
 	remote := conn.RemoteAddr().String()
 
-	// Worker pool for concurrent request processing (50 workers)
-	workerPool := make(chan struct{}, 50)
+	// Worker pool for concurrent request processing
+	workerPool := make(chan struct{}, workerPoolSize)
 
 	// Context for cancellation (prevents goroutine leaks)
 	ctx, cancel := context.WithCancel(context.Background())
