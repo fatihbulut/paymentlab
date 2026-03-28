@@ -5,87 +5,111 @@ on:
     branches: [staging]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  OWNER: ${{ github.repository_owner }}
+
 jobs:
+
+  # ─────────────────────────────────────────────────────
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push issuer image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.issuer
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/iso-parser-service-issuer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push acquirer image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.acquirer
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.OWNER }}/iso-parser-service-acquirer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   # ─────────────────────────────────────────────────────
   deploy-issuer:
     name: Deploy → Issuer Server
+    needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-
-      - name: Build Issuer
-        run: GOOS=linux GOARCH=amd64 go build -o myissuer ./cmd/issuer
-
-      - name: Copy binary to server
-        uses: appleboy/scp-action@master
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
         with:
           host:     ${{ vars.ISSUER_IP }}
           username: ${{ vars.REMOTE_USER }}
           key:      ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
-          source:   myissuer
-          target:   /home/ubuntu/issuer-service/
+          source:   docker-compose.issuer.yml
+          target:   ~/
 
-      - name: Copy web/spec.json to server
-        uses: appleboy/scp-action@master
+      - name: Deploy via Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host:     ${{ vars.ISSUER_IP }}
           username: ${{ vars.REMOTE_USER }}
           key:      ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
-          source:   web/spec.json
-          target:   /home/ubuntu/issuer-service/
-
-      - name: Restart service
-        uses: appleboy/ssh-action@master
-        with:
-          host:     ${{ vars.ISSUER_IP }}
-          username: ${{ vars.REMOTE_USER }}
-          key:      ${{ vars.ISSUER_SSH_PRIVATE_KEY }}
-          script:   sudo systemctl restart issuer.service
+          script: |
+            set -e
+            cd ~
+            docker compose -f docker-compose.issuer.yml pull
+            docker compose -f docker-compose.issuer.yml up -d
+            docker image prune -f
 
   # ─────────────────────────────────────────────────────
   deploy-acquirer:
     name: Deploy → Acquirer Server
+    needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-
-      - name: Build Acquirer
-        run: GOOS=linux GOARCH=amd64 go build -o myacquirer ./cmd/acquirer
-
-      - name: Copy binary to server
-        uses: appleboy/scp-action@master
+      - name: Copy compose file to server
+        uses: appleboy/scp-action@v0.1.7
         with:
           host:     ${{ vars.ACQUIRER_IP }}
           username: ${{ vars.REMOTE_USER }}
           key:      ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
-          source:   myacquirer
-          target:   /home/ubuntu/acquirer-service/
+          source:   docker-compose.acquirer.yml
+          target:   ~/
 
-      - name: Copy web files to server
-        uses: appleboy/scp-action@master
+      - name: Deploy via Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host:     ${{ vars.ACQUIRER_IP }}
           username: ${{ vars.REMOTE_USER }}
           key:      ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
-          source:   web/
-          target:   /home/ubuntu/acquirer-service/
-          strip_components: 0
-
-      - name: Restart service
-        uses: appleboy/ssh-action@master
-        with:
-          host:     ${{ vars.ACQUIRER_IP }}
-          username: ${{ vars.REMOTE_USER }}
-          key:      ${{ vars.ACQUIRER_SSH_PRIVATE_KEY }}
-          script:   sudo systemctl restart acquirer.service
+          script: |
+            set -e
+            cd ~
+            docker compose -f docker-compose.acquirer.yml pull
+            docker compose -f docker-compose.acquirer.yml up -d
+            docker image prune -f
