@@ -170,9 +170,9 @@ docker compose -f ~/docker-compose.acquirer.yml restart
 
 3. **Latency (p50, p95, p99)**
    ```promql
-   histogram_quantile(0.50, rate(payment_processing_duration_ms_bucket[5m]))
-   histogram_quantile(0.95, rate(payment_processing_duration_ms_bucket[5m]))
-   histogram_quantile(0.99, rate(payment_processing_duration_ms_bucket[5m]))
+   histogram_quantile(0.50, rate(payment_processing_duration_ms_milliseconds_bucket[5m]))
+   histogram_quantile(0.95, rate(payment_processing_duration_ms_milliseconds_bucket[5m]))
+   histogram_quantile(0.99, rate(payment_processing_duration_ms_milliseconds_bucket[5m]))
    ```
 
 4. **Error Rate**
@@ -186,17 +186,24 @@ docker compose -f ~/docker-compose.acquirer.yml restart
 
 1. **Goroutines**
    ```promql
-   go_goroutines{service_name="issuer"}
+   # Check metrics browser for correct label (job, service_name, or service.name)
+   go_goroutines{job="issuer"}
+   # or
+   go_goroutines
    ```
 
 2. **Memory Usage**
    ```promql
-   go_memstats_heap_alloc_bytes{service_name="issuer"}
+   go_memstats_heap_alloc_bytes{job="issuer"}
+   # or
+   go_memstats_heap_alloc_bytes
    ```
 
 3. **CPU Usage**
    ```promql
-   rate(process_cpu_seconds_total{service_name="issuer"}[1m])
+   rate(process_cpu_seconds_total{job="issuer"}[1m])
+   # or
+   rate(process_cpu_seconds_total[1m])
    ```
 
 ---
@@ -246,7 +253,7 @@ Create alerts in Grafana Cloud:
 ### High Latency
 ```promql
 histogram_quantile(0.95, 
-  rate(payment_processing_duration_ms_bucket[5m])
+  rate(payment_processing_duration_ms_milliseconds_bucket[5m])
 ) > 200
 ```
 **Threshold:** p95 latency >200ms
