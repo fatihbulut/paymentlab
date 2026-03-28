@@ -3,6 +3,10 @@ name: Build & Deploy
 on:
   push:
     branches: [staging]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
   workflow_dispatch:
 
 env:
