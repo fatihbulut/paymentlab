@@ -8,11 +8,25 @@ import (
 	"iso-parser-service/internal/acquirer"
 	"iso-parser-service/internal/config"
 	"iso-parser-service/internal/iso"
+	"iso-parser-service/internal/otel"
 	"iso-parser-service/internal/store"
 	storepostgres "iso-parser-service/internal/store/postgres"
 )
 
 func main() {
+	ctx := context.Background()
+
+	// Initialize OpenTelemetry (metrics + traces)
+	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
+		shutdown, err := otel.InitOTel(ctx, "acquirer")
+		if err != nil {
+			log.Printf("warning: failed to init OpenTelemetry: %v", err)
+		} else {
+			defer shutdown(ctx)
+			log.Println("OpenTelemetry initialized")
+		}
+	}
+
 	// Load ISO spec from JSON (Single Source of Truth)
 	if err := iso.InitSpec("web/spec.json"); err != nil {
 		log.Fatalf("failed to load ISO spec: %v", err)
@@ -20,7 +34,6 @@ func main() {
 	log.Println("ISO spec loaded from web/spec.json")
 
 	cfg := config.FromEnv()
-	ctx := context.Background()
 	var appStore store.Store
 
 	if cfg.DatabaseURL != "" {
