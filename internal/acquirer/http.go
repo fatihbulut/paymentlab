@@ -15,6 +15,7 @@ import (
 
 	"iso-parser-service/internal/card"
 	"iso-parser-service/internal/iso"
+	otellib "iso-parser-service/internal/otel"
 	"iso-parser-service/internal/store"
 )
 
@@ -287,8 +288,8 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		attribute.Float64("transaction.duration_ms", duration.Seconds()*1000),
 	)
 
-	// Record critical health metrics
-	recordHealthMetrics()
+	// Record OpenTelemetry metrics
+	otellib.RecordTransactionWithService(ctx, "acquirer", respMsg.MTI, respMsg.RespCode, duration)
 
 	c.JSON(http.StatusOK, gin.H{
 		"request_hex":  hexReq,
