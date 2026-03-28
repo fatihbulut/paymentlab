@@ -27,6 +27,8 @@ services:
       DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@postgres:5432/paymentlab?sslmode=disable
       ISSUER_LISTEN: 0.0.0.0:5001
       ISSUER_WORKER_POOL: ${ISSUER_WORKER_POOL:-1000}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
     depends_on:
       - postgres
 

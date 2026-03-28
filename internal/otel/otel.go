@@ -35,8 +35,11 @@ func InitOTel(ctx context.Context, serviceName string) (func(context.Context) er
 		return nil, err
 	}
 
+	// Use 1% sampling for production (100K RPS would generate 1K traces/sec)
+	// Set OTEL_TRACE_SAMPLE_RATE env var to override (0.0 to 1.0)
+	sampleRate := 0.01 // 1% sampling
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
+		sdktrace.WithSampler(sdktrace.TraceIDRatioBased(sampleRate)),
 		sdktrace.WithBatcher(traceExporter),
 		sdktrace.WithResource(res),
 	)

@@ -6,17 +6,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"iso-parser-service/internal/otel"
 	"log"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"time"
-
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 )
 
 // ServeTCP starts a TCP server on the given address and uses the provided
@@ -58,39 +53,23 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	tracer := otel.Tracer("issuer-tracer")
-
 	for {
 		start := time.Now()
-
-		// Start new span for each message (context propagation not available over raw TCP)
-		_, span := tracer.Start(ctx, "issuer.handle_message")
-		span.SetAttributes(
-			attribute.String("remote.addr", remote),
-			attribute.String("protocol", "tcp"),
-			attribute.String("service", "issuer"),
-		)
 
 		hexReq, err := readTPDUFrame(conn)
 		if err != nil {
 			if err != io.EOF {
 				log.Printf("issuer: read error from %s: %v", remote, err)
-				span.RecordError(err)
-				span.SetStatus(codes.Error, "read frame error")
 			}
-			span.End()
 			return
 		}
-
-		span.SetAttributes(attribute.Int("request.length", len(hexReq)))
 
 		// Acquire worker slot (blocks if pool is full)
 		workerPool <- struct{}{}
 
 		// Process request in goroutine for concurrent handling
-		go func(req string, s trace.Span, startTime time.Time, reqCtx context.Context) {
+		go func(req string, startTime time.Time, reqCtx context.Context) {
 			defer func() { <-workerPool }() // Release worker slot
-			defer s.End()
 
 			// Check if context is cancelled
 			select {
@@ -102,32 +81,14 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 			hexResp, respMsg, err := svc.HandleHex(req)
 			if err != nil {
 				log.Printf("issuer: handle error for %s: %v", remote, err)
-				s.RecordError(err)
-				s.SetStatus(codes.Error, "handle message error")
 				return
 			}
 
+			// Record metrics for monitoring
 			if respMsg != nil {
-				s.SetAttributes(
-					attribute.String("iso.mti", respMsg.MTI),
-					attribute.String("iso.response_code", respMsg.RespCode),
-					attribute.String("transaction.status", "processed"),
-				)
-				if respMsg.STAN != "" {
-					s.SetAttributes(attribute.String("iso.stan", respMsg.STAN))
-				}
-
-				// Record metrics
 				duration := time.Since(startTime)
-				s.SetAttributes(
-					attribute.Float64("transaction.duration_ms", duration.Seconds()*1000),
-				)
-
-				// Record critical health metrics
-				recordIssuerHealthMetrics()
+				otel.RecordTransactionWithService(reqCtx, "issuer", respMsg.MTI, respMsg.RespCode, duration)
 			}
-
-			s.SetAttributes(attribute.Int("response.length", len(hexResp)))
 
 			// Check context before write
 			select {
@@ -138,13 +99,9 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 
 			if err := writeTPDUFrame(conn, hexResp); err != nil {
 				log.Printf("issuer: write error to %s: %v", remote, err)
-				s.RecordError(err)
-				s.SetStatus(codes.Error, "write frame error")
 				return
 			}
-
-			s.SetStatus(codes.Ok, "success")
-		}(hexReq, span, start, ctx)
+		}(hexReq, start, ctx)
 	}
 }
 
@@ -197,18 +154,4 @@ func writeTPDUFrame(conn net.Conn, hexResp string) error {
 	// Send packet
 	_, err = conn.Write(packet)
 	return err
-}
-
-// recordIssuerHealthMetrics records critical health metrics for monitoring
-func recordIssuerHealthMetrics() {
-	goroutines := runtime.NumGoroutine()
-	rss := estimateIssuerRSSMemory()
-	fmt.Printf("HEALTH_METRIC: service=issuer goroutines=%d rss_bytes=%d\n", goroutines, rss)
-}
-
-// estimateIssuerRSSMemory provides a simple RSS memory estimation
-func estimateIssuerRSSMemory() int64 {
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	return int64(m.Sys) - int64(m.HeapSys)
 }
