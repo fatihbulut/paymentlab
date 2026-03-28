@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Load ISO spec from JSON (Single Source of Truth)
-	if err := iso.InitSpec("/home/ubuntu/issuer-service/web/spec.json"); err != nil {
+	if err := iso.InitSpec("web/spec.json"); err != nil {
 		log.Fatalf("failed to load ISO spec: %v", err)
 	}
 	log.Println("ISO spec loaded from web/spec.json")

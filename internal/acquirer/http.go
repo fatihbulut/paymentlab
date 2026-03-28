@@ -43,7 +43,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 
 	// Serve spec.json (Single Source of Truth)
 	router.GET("/spec.json", func(c *gin.Context) {
-		c.File("/home/ubuntu/acquirer-service/web/spec.json")
+		c.File("web/spec.json")
 	})
 
 	// Serve ISO engine
