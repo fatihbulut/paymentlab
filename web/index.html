@@ -1030,6 +1030,23 @@
             return descriptions[code] || 'Account Type ' + code;
         }
 
+        function getPOSEntryModeDescription(code) {
+            const descriptions = {
+                '021': 'Magnetic Stripe (ATM)',
+                '051': 'ICC/Chip (EMV)',
+                '071': 'Contactless Chip',
+                '811': 'E-commerce/Online',
+                '901': 'Manual Entry',
+                '020': 'Magnetic Stripe Read',
+                '050': 'Chip Card Read',
+                '070': 'Contactless',
+                '080': 'Fallback to Magnetic',
+                '810': 'E-commerce',
+                '820': 'Recurring Transaction'
+            };
+            return descriptions[code] || 'POS Entry Mode ' + code;
+        }
+
         // Update transaction type, channel, and processing code
         function updateTransactionType() {
             const txTypeSelect = document.getElementById('txType');
@@ -1367,15 +1384,28 @@
                             const toDesc = getAccountTypeDescription(toAcc);
                             
                             tableHTML += `<td class="px-2 py-2 text-gray-300">`;
-                            tableHTML += `<div class="flex items-center gap-2 mb-1">`;
+                            tableHTML += `<div class="flex items-center gap-2 flex-wrap">`;
                             tableHTML += `<span class="font-mono text-emerald-400 font-semibold">${field.value}</span>`;
+                            tableHTML += `<span class="text-gray-600">→</span>`;
+                            tableHTML += `<span class="text-[10px] text-gray-500">`;
+                            tableHTML += `<span class="text-cyan-400 font-mono">${txCode}</span>: ${txDesc}`;
+                            tableHTML += ` <span class="text-gray-700">|</span> `;
+                            tableHTML += `<span class="text-cyan-400 font-mono">${fromAcc}</span>: From ${fromDesc}`;
+                            tableHTML += ` <span class="text-gray-700">|</span> `;
+                            tableHTML += `<span class="text-cyan-400 font-mono">${toAcc}</span>: To ${toDesc}`;
+                            tableHTML += `</span>`;
                             tableHTML += `</div>`;
-                            tableHTML += `<div class="text-[10px] text-gray-500 flex items-center gap-2 flex-wrap">`;
-                            tableHTML += `<span><span class="text-cyan-400 font-mono">${txCode}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">${txDesc}</span></span>`;
-                            tableHTML += `<span class="text-gray-700">|</span>`;
-                            tableHTML += `<span><span class="text-cyan-400 font-mono">${fromAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">From: ${fromDesc}</span></span>`;
-                            tableHTML += `<span class="text-gray-700">|</span>`;
-                            tableHTML += `<span><span class="text-cyan-400 font-mono">${toAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">To: ${toDesc}</span></span>`;
+                            tableHTML += `</td>`;
+                        } 
+                        // Special handling for POS Entry Mode (Field 22)
+                        else if (field.number === '22' && field.value && field.value.length === 3) {
+                            const posDesc = getPOSEntryModeDescription(field.value);
+                            
+                            tableHTML += `<td class="px-2 py-2 text-gray-300">`;
+                            tableHTML += `<div class="flex items-center gap-2 flex-wrap">`;
+                            tableHTML += `<span class="font-mono text-emerald-400 font-semibold">${field.value}</span>`;
+                            tableHTML += `<span class="text-gray-600">→</span>`;
+                            tableHTML += `<span class="text-[10px] text-gray-400">${posDesc}</span>`;
                             tableHTML += `</div>`;
                             tableHTML += `</td>`;
                         } else {
@@ -1696,15 +1726,28 @@
                                 const toDesc = getAccountTypeDescription(toAcc);
                                 
                                 tableHTML += `<td class="px-2 py-2 text-gray-300">`;
-                                tableHTML += `<div class="flex items-center gap-2 mb-1">`;
+                                tableHTML += `<div class="flex items-center gap-2 flex-wrap">`;
                                 tableHTML += `<span class="font-mono text-purple-400 font-semibold">${field.value}</span>`;
+                                tableHTML += `<span class="text-gray-600">→</span>`;
+                                tableHTML += `<span class="text-[10px] text-gray-500">`;
+                                tableHTML += `<span class="text-cyan-400 font-mono">${txCode}</span>: ${txDesc}`;
+                                tableHTML += ` <span class="text-gray-700">|</span> `;
+                                tableHTML += `<span class="text-cyan-400 font-mono">${fromAcc}</span>: From ${fromDesc}`;
+                                tableHTML += ` <span class="text-gray-700">|</span> `;
+                                tableHTML += `<span class="text-cyan-400 font-mono">${toAcc}</span>: To ${toDesc}`;
+                                tableHTML += `</span>`;
                                 tableHTML += `</div>`;
-                                tableHTML += `<div class="text-[10px] text-gray-500 flex items-center gap-2 flex-wrap">`;
-                                tableHTML += `<span><span class="text-cyan-400 font-mono">${txCode}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">${txDesc}</span></span>`;
-                                tableHTML += `<span class="text-gray-700">|</span>`;
-                                tableHTML += `<span><span class="text-cyan-400 font-mono">${fromAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">From: ${fromDesc}</span></span>`;
-                                tableHTML += `<span class="text-gray-700">|</span>`;
-                                tableHTML += `<span><span class="text-cyan-400 font-mono">${toAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">To: ${toDesc}</span></span>`;
+                                tableHTML += `</td>`;
+                            } 
+                            // Special handling for POS Entry Mode (Field 22) in response
+                            else if (field.number === '22' && field.value && field.value.length === 3) {
+                                const posDesc = getPOSEntryModeDescription(field.value);
+                                
+                                tableHTML += `<td class="px-2 py-2 text-gray-300">`;
+                                tableHTML += `<div class="flex items-center gap-2 flex-wrap">`;
+                                tableHTML += `<span class="font-mono text-purple-400 font-semibold">${field.value}</span>`;
+                                tableHTML += `<span class="text-gray-600">→</span>`;
+                                tableHTML += `<span class="text-[10px] text-gray-400">${posDesc}</span>`;
                                 tableHTML += `</div>`;
                                 tableHTML += `</td>`;
                             } else {
