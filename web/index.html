@@ -238,6 +238,46 @@
                                     </button>
                                 </div>
                             </div>
+
+                            <!-- Transaction Type Selector -->
+                            <div class="space-y-1.5">
+                                <label for="txType" class="text-xs text-gray-400 block">Transaction Type</label>
+                                <select 
+                                    id="txType"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 text-white h-9 text-sm rounded-md px-3 outline-none"
+                                    onchange="updateTransactionType()"
+                                >
+                                    <!-- POS Channel Transactions -->
+                                    <optgroup label="🏪 POS Transactions">
+                                        <option value="PURCHASE" data-code="00" data-from="00" data-to="00" data-channel="POS" selected>Purchase</option>
+                                        <option value="PURCHASE_CASHBACK" data-code="09" data-from="00" data-to="00" data-channel="POS">Purchase with Cashback</option>
+                                        <option value="PURCHASE_RETURN" data-code="20" data-from="00" data-to="00" data-channel="POS">Purchase Return</option>
+                                        <option value="REFUND" data-code="20" data-from="00" data-to="00" data-channel="POS">Refund</option>
+                                        <option value="PREAUTH" data-code="00" data-from="00" data-to="00" data-channel="POS">Preauthorization</option>
+                                        <option value="PREAUTH_COMPLETION" data-code="00" data-from="00" data-to="00" data-channel="POS">Preauth Completion</option>
+                                    </optgroup>
+                                    <!-- ATM Channel Transactions -->
+                                    <optgroup label="🏧 ATM Transactions">
+                                        <option value="CASH_WITHDRAWAL" data-code="01" data-from="00" data-to="00" data-channel="ATM">Cash Withdrawal</option>
+                                        <option value="CASH_DEPOSIT" data-code="21" data-from="00" data-to="00" data-channel="ATM">Cash Deposit</option>
+                                        <option value="BALANCE_INQUIRY" data-code="31" data-from="00" data-to="00" data-channel="ATM">Balance Inquiry</option>
+                                        <option value="MINI_STATEMENT" data-code="38" data-from="00" data-to="00" data-channel="ATM">Mini Statement</option>
+                                        <option value="TRANSFER" data-code="40" data-from="10" data-to="20" data-channel="ATM">Fund Transfer</option>
+                                    </optgroup>
+                                    <!-- Web/E-commerce Transactions -->
+                                    <optgroup label="🌐 Web/E-commerce">
+                                        <option value="WEB_PURCHASE" data-code="00" data-from="00" data-to="00" data-channel="Web">Online Purchase</option>
+                                        <option value="PAYMENT" data-code="40" data-from="00" data-to="00" data-channel="Web">Bill Payment</option>
+                                        <option value="ORIGINAL_CREDIT" data-code="26" data-from="00" data-to="00" data-channel="Web">Money Transfer (OCT)</option>
+                                        <option value="CARD_VERIFICATION" data-code="00" data-from="00" data-to="00" data-channel="Web">Card Verification</option>
+                                    </optgroup>
+                                    <!-- Special Transactions -->
+                                    <optgroup label="⚙️ Special">
+                                        <option value="REVERSAL" data-code="02" data-from="00" data-to="00" data-channel="POS">Reversal</option>
+                                        <option value="ADJUSTMENT" data-code="02" data-from="00" data-to="00" data-channel="POS">Adjustment</option>
+                                    </optgroup>
+                                </select>
+                            </div>
                         </div>
 
                         <!-- ICC Data (EMV Field 55) -->
@@ -763,6 +803,10 @@
                 console.log('Initializing ISO Engine...');
                 await isoEngine.init();
                 console.log('ISO Engine ready:', isoEngine.ready);
+                
+                // Filter transaction types for default POS channel
+                filterTransactionTypesByChannel('POS');
+                
                 updatePreview();
                 loadCards();
                 loadTransactions();
@@ -775,40 +819,79 @@
         // Channel selection
         function selectChannel(channel) {
             selectedChannel = channel;
+            
+            // Update button styles
             ['POS', 'ATM', 'Web'].forEach(ch => {
                 const btn = document.getElementById('channel-' + ch.toLowerCase());
-                if (ch === channel) {
-                    btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white';
-                } else {
-                    btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300';
+                if (btn) {
+                    if (ch === channel) {
+                        btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white';
+                    } else {
+                        btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300';
+                    }
                 }
             });
-            document.getElementById('decodedChannel').textContent = channel;
             
-            // Update TerminalID based on channel (8 characters)
-            let terminalId = '';
-            switch(channel) {
-                case 'POS':
-                    terminalId = 'POS00001';
-                    break;
-                case 'ATM':
-                    terminalId = 'ATM00001';
-                    break;
-                case 'Web':
-                    terminalId = 'WEB00001';
-                    break;
-                default:
-                    terminalId = 'TERM0001';
+            // Update terminal ID based on channel
+            if (channel === 'POS') {
+                currentTerminalId = 'POS00001';
+            } else if (channel === 'ATM') {
+                currentTerminalId = 'ATM00001';
+            } else if (channel === 'Web') {
+                currentTerminalId = 'WEB00001';
             }
             
-            // Update currentTerminalId global variable
-            currentTerminalId = terminalId;
+            // Filter transaction types based on channel
+            filterTransactionTypesByChannel(channel);
             
-            // Update Issuer Engine display
-            document.getElementById('decodedTerminal').textContent = terminalId;
-            
-            console.log('Channel changed to:', channel, 'TerminalID:', terminalId);
+            console.log('Channel changed to:', channel, 'TerminalID:', currentTerminalId);
             updatePreview();
+        }
+
+        // Filter transaction types dropdown based on selected channel
+        function filterTransactionTypesByChannel(channel) {
+            const txTypeSelect = document.getElementById('txType');
+            if (!txTypeSelect) return;
+            
+            const allOptions = txTypeSelect.querySelectorAll('option');
+            const allOptGroups = txTypeSelect.querySelectorAll('optgroup');
+            
+            // Show/hide options based on channel
+            allOptions.forEach(option => {
+                const optionChannel = option.getAttribute('data-channel');
+                if (optionChannel) {
+                    if (optionChannel === channel) {
+                        option.style.display = '';
+                    } else {
+                        option.style.display = 'none';
+                    }
+                }
+            });
+            
+            // Show/hide optgroups based on whether they have visible options
+            allOptGroups.forEach(optgroup => {
+                const visibleOptions = Array.from(optgroup.querySelectorAll('option')).filter(
+                    opt => opt.style.display !== 'none'
+                );
+                if (visibleOptions.length > 0) {
+                    optgroup.style.display = '';
+                } else {
+                    optgroup.style.display = 'none';
+                }
+            });
+            
+            // Select first visible option if current selection is hidden
+            const currentOption = txTypeSelect.options[txTypeSelect.selectedIndex];
+            if (currentOption && currentOption.style.display === 'none') {
+                // Find first visible option
+                for (let i = 0; i < txTypeSelect.options.length; i++) {
+                    if (txTypeSelect.options[i].style.display !== 'none') {
+                        txTypeSelect.selectedIndex = i;
+                        updateTransactionType();
+                        break;
+                    }
+                }
+            }
         }
 
         // Request tab switching
@@ -918,6 +1001,68 @@
             return hours + minutes + seconds;
         }
 
+        // Helper functions for processing code descriptions
+        function getTransactionTypeDescription(code) {
+            const descriptions = {
+                '00': 'Purchase/Goods & Services',
+                '01': 'Cash Withdrawal',
+                '09': 'Purchase with Cashback',
+                '20': 'Refund/Return',
+                '21': 'Cash Deposit',
+                '26': 'Original Credit Transfer (OCT)',
+                '31': 'Balance Inquiry',
+                '38': 'Mini Statement',
+                '40': 'Payment/Transfer',
+                '02': 'Reversal/Adjustment',
+                '93': 'Account Verification'
+            };
+            return descriptions[code] || 'Transaction Type ' + code;
+        }
+
+        function getAccountTypeDescription(code) {
+            const descriptions = {
+                '00': 'Default/Unspecified',
+                '10': 'Savings Account',
+                '20': 'Checking Account',
+                '30': 'Credit Account',
+                '40': 'Universal Account'
+            };
+            return descriptions[code] || 'Account Type ' + code;
+        }
+
+        // Update transaction type, channel, and processing code
+        function updateTransactionType() {
+            const txTypeSelect = document.getElementById('txType');
+            if (!txTypeSelect) return;
+            
+            const selectedOption = txTypeSelect.options[txTypeSelect.selectedIndex];
+            const txCode = selectedOption.getAttribute('data-code') || '00';
+            const fromAcc = selectedOption.getAttribute('data-from') || '00';
+            const toAcc = selectedOption.getAttribute('data-to') || '00';
+            const channel = selectedOption.getAttribute('data-channel') || 'POS';
+            
+            // Auto-select channel based on transaction type
+            selectChannel(channel);
+            
+            // Update preview if function exists
+            if (typeof updatePreview === 'function') {
+                updatePreview();
+            }
+        }
+        
+        // Get current processing code from transaction type
+        function getCurrentProcessingCode() {
+            const txTypeSelect = document.getElementById('txType');
+            if (!txTypeSelect) return '000000';
+            
+            const selectedOption = txTypeSelect.options[txTypeSelect.selectedIndex];
+            const txCode = selectedOption.getAttribute('data-code') || '00';
+            const fromAcc = selectedOption.getAttribute('data-from') || '00';
+            const toAcc = selectedOption.getAttribute('data-to') || '00';
+            
+            return txCode + fromAcc + toAcc;
+        }
+
         // Build message
         function buildMessage() {
             if (!currentSTAN) {
@@ -938,10 +1083,13 @@
             // Get ICC Data (Field 55) if provided
             const iccData = document.getElementById('iccData')?.value?.trim() || '';
 
+            // Get dynamic processing code from transaction type
+            const procCode = getCurrentProcessingCode();
+
             return {
                 'MTI': '0100',
                 '2': pan, // llvar - length otomatik
-                '3': '000000', // 6 karakter fixed
+                '3': procCode, // 6 karakter fixed - dynamic based on transaction type
                 '4': amountPadded, // 12 karakter, zero padded
                 '7': transDateTime, // 10 karakter (MMDDHHmmss)
                 '11': currentSTAN.padStart(6, '0'), // 6 karakter, zero padded
@@ -1208,7 +1356,32 @@
                         tableHTML += `<tr class="border-b border-gray-800/30 hover:bg-[#1a1a1a]/50">`;
                         tableHTML += `<td class="px-2 py-2 text-emerald-400">${field.number}</td>`;
                         tableHTML += `<td class="px-2 py-2 text-gray-500">${field.name}</td>`;
-                        tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                        
+                        // Special handling for Processing Code (Field 3)
+                        if (field.number === '3' && field.value && field.value.length === 6) {
+                            const txCode = field.value.substring(0, 2);
+                            const fromAcc = field.value.substring(2, 4);
+                            const toAcc = field.value.substring(4, 6);
+                            const txDesc = getTransactionTypeDescription(txCode);
+                            const fromDesc = getAccountTypeDescription(fromAcc);
+                            const toDesc = getAccountTypeDescription(toAcc);
+                            
+                            tableHTML += `<td class="px-2 py-2 text-gray-300">`;
+                            tableHTML += `<div class="flex items-center gap-2 mb-1">`;
+                            tableHTML += `<span class="font-mono text-emerald-400 font-semibold">${field.value}</span>`;
+                            tableHTML += `</div>`;
+                            tableHTML += `<div class="text-[10px] text-gray-500 flex items-center gap-2 flex-wrap">`;
+                            tableHTML += `<span><span class="text-cyan-400 font-mono">${txCode}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">${txDesc}</span></span>`;
+                            tableHTML += `<span class="text-gray-700">|</span>`;
+                            tableHTML += `<span><span class="text-cyan-400 font-mono">${fromAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">From: ${fromDesc}</span></span>`;
+                            tableHTML += `<span class="text-gray-700">|</span>`;
+                            tableHTML += `<span><span class="text-cyan-400 font-mono">${toAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">To: ${toDesc}</span></span>`;
+                            tableHTML += `</div>`;
+                            tableHTML += `</td>`;
+                        } else {
+                            tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                        }
+                        
                         tableHTML += `</tr>`;
                     }
                     
@@ -1512,7 +1685,32 @@
                             tableHTML += `<tr class="border-b border-gray-800/30 hover:bg-[#1a1a1a]/50">`;
                             tableHTML += `<td class="px-2 py-2 text-purple-400">${field.number}</td>`;
                             tableHTML += `<td class="px-2 py-2 text-gray-500">${field.name}</td>`;
-                            tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                            
+                            // Special handling for Processing Code (Field 3) in response
+                            if (field.number === '3' && field.value && field.value.length === 6) {
+                                const txCode = field.value.substring(0, 2);
+                                const fromAcc = field.value.substring(2, 4);
+                                const toAcc = field.value.substring(4, 6);
+                                const txDesc = getTransactionTypeDescription(txCode);
+                                const fromDesc = getAccountTypeDescription(fromAcc);
+                                const toDesc = getAccountTypeDescription(toAcc);
+                                
+                                tableHTML += `<td class="px-2 py-2 text-gray-300">`;
+                                tableHTML += `<div class="flex items-center gap-2 mb-1">`;
+                                tableHTML += `<span class="font-mono text-purple-400 font-semibold">${field.value}</span>`;
+                                tableHTML += `</div>`;
+                                tableHTML += `<div class="text-[10px] text-gray-500 flex items-center gap-2 flex-wrap">`;
+                                tableHTML += `<span><span class="text-cyan-400 font-mono">${txCode}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">${txDesc}</span></span>`;
+                                tableHTML += `<span class="text-gray-700">|</span>`;
+                                tableHTML += `<span><span class="text-cyan-400 font-mono">${fromAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">From: ${fromDesc}</span></span>`;
+                                tableHTML += `<span class="text-gray-700">|</span>`;
+                                tableHTML += `<span><span class="text-cyan-400 font-mono">${toAcc}</span> <span class="text-gray-600">→</span> <span class="text-gray-400">To: ${toDesc}</span></span>`;
+                                tableHTML += `</div>`;
+                                tableHTML += `</td>`;
+                            } else {
+                                tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                            }
+                            
                             tableHTML += `</tr>`;
                         }
                         

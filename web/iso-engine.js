@@ -365,7 +365,7 @@ class ISO8583Engine {
                 const spec = this.spec.fields[key];
                 if (spec && value) {
                     fields.push({
-                        number: fieldNum,
+                        number: String(fieldNum),
                         name: spec.name,
                         description: spec.description,
                         value: value
@@ -376,7 +376,7 @@ class ISO8583Engine {
                 for (const [num, spec] of Object.entries(this.spec.fields)) {
                     if (spec.name === key && value) {
                         fields.push({
-                            number: parseInt(num),
+                            number: String(num),
                             name: spec.name,
                             description: spec.description,
                             value: value
