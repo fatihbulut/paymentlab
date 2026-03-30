@@ -22,8 +22,8 @@ func ServeTCP(addr string, svc *Service) error {
 		return err
 	}
 
-	// Get worker pool size from environment (default: 1000)
-	workerPoolSize := 1000
+	// Get worker pool size from environment (default: 5000)
+	workerPoolSize := 5000
 	if poolEnv := os.Getenv("ISSUER_WORKER_POOL"); poolEnv != "" {
 		if size, err := strconv.Atoi(poolEnv); err == nil && size > 0 {
 			workerPoolSize = size
@@ -78,7 +78,7 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 			default:
 			}
 
-			hexResp, respMsg, err := svc.HandleHex(req)
+			hexResp, respMsg, err := svc.HandleHex(reqCtx, req)
 			if err != nil {
 				log.Printf("issuer: handle error for %s: %v", remote, err)
 				return

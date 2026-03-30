@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"iso-parser-service/internal/iso"
+	"iso-parser-service/internal/scheme"
 	"iso-parser-service/internal/store"
 )
 
@@ -21,6 +22,7 @@ type Decision struct {
 	BalanceBefore *int64
 	BalanceAfter  *int64
 	DurationMs    float64
+	Scheme        scheme.CardScheme
 }
 
 func NewEngine(s store.Store) *Engine {
@@ -40,6 +42,9 @@ func (e *Engine) Authorize(ctx context.Context, req *iso.ISOMessage) (*iso.ISOMe
 	defer func() {
 		decision.DurationMs = float64(time.Since(start).Seconds() * 1000)
 	}()
+
+	// Detect card scheme (Mastercard, Visa, Troy)
+	decision.Scheme = scheme.DetectScheme(req.PAN)
 
 	// Route reversals to dedicated handler
 	if len(req.MTI) == 4 && req.MTI[:2] == "04" {

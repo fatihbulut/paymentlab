@@ -84,6 +84,12 @@ var Spec = &iso8583.MessageSpec{
 			Enc:         encoding.ASCII,
 			Pref:        prefix.ASCII.LLL,
 		}),
+		55: field.NewString(&field.Spec{
+			Length:      999,
+			Description: "ICC System Related Data (EMV)",
+			Enc:         encoding.ASCII,
+			Pref:        prefix.ASCII.LLL,
+		}),
 		61: field.NewString(&field.Spec{
 			Length:      999,
 			Description: "Terminal Private Data",

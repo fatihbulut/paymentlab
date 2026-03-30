@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -201,35 +202,57 @@ func (s *AcquirerSwitch) listenForResponses(ctx context.Context, poolIndex int) 
 }
 
 // sendToIssuer sends message with TPDU wrapper using round-robin load balancing
+// with retry logic: 3 attempts with 100ms delay between retries
 func (s *AcquirerSwitch) sendToIssuer(rawISO []byte) error {
-	// Get next connection from pool (round-robin)
-	s.poolMutex.Lock()
-	connIndex := s.currentConnIndex
-	s.currentConnIndex = (s.currentConnIndex + 1) % s.poolSize
-	conn := s.connectionPool[connIndex]
-	s.poolMutex.Unlock()
+	var lastErr error
 
-	if conn == nil {
-		return errors.New("no connection to issuer")
+	for attempt := 0; attempt < 3; attempt++ {
+		// Get next connection from pool (round-robin)
+		s.poolMutex.Lock()
+		connIndex := s.currentConnIndex
+		s.currentConnIndex = (s.currentConnIndex + 1) % s.poolSize
+		conn := s.connectionPool[connIndex]
+		s.poolMutex.Unlock()
+
+		if conn == nil {
+			lastErr = errors.New("no connection to issuer")
+			// Connection yoksa yeniden dene, belki listener yeniden bağlanmıştır
+			if attempt < 2 {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+			return lastErr
+		}
+
+		// Create TPDU wrapper: [2-byte Length] + [5-byte TPDU] + ISO Message
+		tpdu := []byte{0x60, 0x00, 0x01, 0x00, 0x00}
+		totalLen := len(tpdu) + len(rawISO)
+
+		// Create packet: [2-byte length] + [TPDU] + [ISO]
+		packet := make([]byte, 2+totalLen)
+		binary.BigEndian.PutUint16(packet[:2], uint16(totalLen))
+		copy(packet[2:], tpdu)
+		copy(packet[2+len(tpdu):], rawISO)
+
+		// Send packet
+		_, err := conn.Write(packet)
+		if err == nil {
+			if attempt > 0 {
+				log.Printf("acquirer: sendToIssuer succeeded on attempt %d/3", attempt+1)
+			}
+			return nil // Success!
+		}
+
+		lastErr = err
+		log.Printf("acquirer: sendToIssuer attempt %d/3 failed: %v", attempt+1, err)
+
+		// Son deneme değilse bekle ve tekrar dene
+		if attempt < 2 {
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 
-	// Create TPDU wrapper: [2-byte Length] + [5-byte TPDU] + ISO Message
-	tpdu := []byte{0x60, 0x00, 0x01, 0x00, 0x00}
-	totalLen := len(tpdu) + len(rawISO)
-
-	// Create packet: [2-byte length] + [TPDU] + [ISO]
-	packet := make([]byte, 2+totalLen)
-	binary.BigEndian.PutUint16(packet[:2], uint16(totalLen))
-	copy(packet[2:], tpdu)
-	copy(packet[2+len(tpdu):], rawISO)
-
-	// Send packet
-	_, err := conn.Write(packet)
-	if err != nil {
-		return fmt.Errorf("write failed: %w", err)
-	}
-
-	return nil
+	return fmt.Errorf("write failed after 3 attempts: %w", lastErr)
 }
 
 // readTPDUPacket reads a packet with 2-byte length prefix

@@ -25,7 +25,7 @@ func NewService(appStore store.Store) *Service {
 
 // HandleHex processes a single ISO8583 hex request and returns the hex response
 // along with the parsed response message.
-func (s *Service) HandleHex(hexReq string) (string, *iso.ISOMessage, error) {
+func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.ISOMessage, error) {
 	reqMsg, err := iso.ParseHexToMessage(hexReq)
 	if err != nil {
 		return "", nil, fmt.Errorf("parse request: %w", err)
@@ -49,7 +49,7 @@ func (s *Service) HandleHex(hexReq string) (string, *iso.ISOMessage, error) {
 			Status:       store.TransactionStatus("RECEIVED"),
 		}
 
-		created, createErr := s.store.IssuerTransactions().CreateIssuerTransaction(context.Background(), tx)
+		created, createErr := s.store.IssuerTransactions().CreateIssuerTransaction(ctx, tx)
 		if createErr == nil && created != nil {
 			id := created.ID
 			issuerTxID = &id
@@ -57,7 +57,7 @@ func (s *Service) HandleHex(hexReq string) (string, *iso.ISOMessage, error) {
 	}
 
 	if s.auth != nil {
-		authResp, decision, authErr := s.auth.Authorize(context.Background(), reqMsg)
+		authResp, decision, authErr := s.auth.Authorize(ctx, reqMsg)
 		if authErr == nil && authResp != nil {
 			respMsg = authResp
 		}
@@ -86,7 +86,7 @@ func (s *Service) HandleHex(hexReq string) (string, *iso.ISOMessage, error) {
 				durationMs = &d
 			}
 			_ = s.store.IssuerTransactions().UpdateIssuerTransaction(
-				context.Background(),
+				ctx,
 				*issuerTxID,
 				status,
 				rc,

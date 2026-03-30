@@ -3,16 +3,10 @@ package iso
 import (
 	"encoding/hex"
 	"fmt"
-	"sync"
 
 	"github.com/moov-io/iso8583"
 )
 
-var hexPool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, 0, 1024)
-	},
-}
 
 func ParseHexToMessage(hexStr string) (*ISOMessage, error) {
 	if len(hexStr) == 0 {
@@ -22,9 +16,6 @@ func ParseHexToMessage(hexStr string) (*ISOMessage, error) {
 	if len(hexStr)%2 != 0 {
 		return nil, fmt.Errorf("invalid hex length: must be even")
 	}
-
-	buf := hexPool.Get().([]byte)
-	defer hexPool.Put(buf[:0])
 
 	rawBytes, err := hex.DecodeString(hexStr)
 	if err != nil {
@@ -64,9 +55,6 @@ func PackMessageToHex(m *ISOMessage) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("pack ISO8583 message: %w", err)
 	}
-
-	buf := hexPool.Get().([]byte)
-	defer hexPool.Put(buf[:0])
 
 	encoded := hex.EncodeToString(rawBytes)
 	return encoded, nil

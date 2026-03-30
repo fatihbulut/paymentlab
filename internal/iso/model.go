@@ -36,6 +36,7 @@ type ISOMessage struct {
 	PinData         string `iso8583:"52" json:"PinData"`
 	SecurityData    string `iso8583:"53" json:"SecurityData"`
 	AddAmounts      string `iso8583:"54" json:"AddAmounts"`
+	ICCData         string `iso8583:"55" json:"ICCData"`
 	Priv2           string `iso8583:"61" json:"Priv2"`
 	ReservedPriv    string `iso8583:"63" json:"ReservedPriv"`
 	NwManagementInf string `iso8583:"70" json:"NwManagementInf"`

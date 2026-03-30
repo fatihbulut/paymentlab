@@ -312,6 +312,15 @@
       "encoding": "ascii",
       "padding": "none"
     },
+    "55": {
+      "name": "ICCData",
+      "description": "ICC System Related Data (EMV)",
+      "type": "string",
+      "length": 999,
+      "format": "lllvar",
+      "encoding": "ascii",
+      "padding": "none"
+    },
     "61": {
       "name": "Priv2",
       "description": "Terminal Private Data",
