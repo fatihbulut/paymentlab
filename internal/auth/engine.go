@@ -66,7 +66,8 @@ func (e *Engine) Authorize(ctx context.Context, req *iso.ISOMessage) (*iso.ISOMe
 		return &resp, decision, nil
 	}
 
-	cardRow, err := e.store.Cards().GetCardByPAN(ctx, req.PAN)
+	// Single atomic query: card lookup + validation + debit
+	result, err := e.store.Cards().AuthorizeAndDebit(ctx, req.PAN, amount)
 	if err != nil {
 		decision.RespCode = RespSystemMalfunction
 		resp.RespCode = decision.RespCode
@@ -75,22 +76,25 @@ func (e *Engine) Authorize(ctx context.Context, req *iso.ISOMessage) (*iso.ISOMe
 		return &resp, decision, nil
 	}
 
-	if rc, reason := ValidateCardBasic(cardRow); rc != "" {
-		decision.RespCode = rc
+	// Card not found
+	if result == nil {
+		decision.RespCode = RespInvalidCardNumber
 		resp.RespCode = decision.RespCode
+		reason := "card not found"
 		decision.DeclineReason = &reason
 		return &resp, decision, nil
 	}
 
-	before, after, ok, err := e.store.Cards().DebitIfSufficient(ctx, cardRow.ID, amount)
-	if err != nil {
-		decision.RespCode = RespSystemMalfunction
-		resp.RespCode = decision.RespCode
-		reason := "debit failed"
-		decision.DeclineReason = &reason
-		return &resp, decision, nil
-	}
-	if !ok {
+	// Card found but debit failed — check why
+	if !result.Debited {
+		// Validate card status/expiry to give specific decline reason
+		if rc, reason := ValidateCardBasic(result.Card); rc != "" {
+			decision.RespCode = rc
+			resp.RespCode = decision.RespCode
+			decision.DeclineReason = &reason
+			return &resp, decision, nil
+		}
+		// Card is valid but insufficient funds
 		decision.RespCode = RespInsufficientFunds
 		resp.RespCode = decision.RespCode
 		reason := "insufficient funds"
@@ -100,8 +104,8 @@ func (e *Engine) Authorize(ctx context.Context, req *iso.ISOMessage) (*iso.ISOMe
 
 	decision.RespCode = RespApproved
 	resp.RespCode = decision.RespCode
-	decision.BalanceBefore = &before
-	decision.BalanceAfter = &after
+	decision.BalanceBefore = &result.BalanceBefore
+	decision.BalanceAfter = &result.BalanceAfter
 
 	authCode := generateAuthCode6()
 	decision.AuthCode = &authCode

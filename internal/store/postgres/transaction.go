@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"iso-parser-service/internal/store"
@@ -22,19 +23,25 @@ func (r *AcquirerTransactionRepository) CreateAcquirerTransaction(ctx context.Co
 		return nil, fmt.Errorf("transaction is nil")
 	}
 
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("generate uuid: %w", err)
+	}
+
 	row := r.pool.QueryRow(ctx, `
 		INSERT INTO acquirer_transactions (
-			stan, rrn, mti, pan_masked, amount, currency_code,
+			id, stan, rrn, mti, pan_masked, amount, currency_code,
 			terminal_id, merchant_id, status, response_code,
 			request_hex, response_hex
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-		RETURNING id, created_at, updated_at
-	`, t.STAN, t.RRN, t.MTI, t.PANMasked, t.Amount, t.CurrencyCode, t.TerminalID, t.MerchantID, string(t.Status), t.ResponseCode, t.RequestHex, t.ResponseHex)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+		RETURNING created_at, updated_at
+	`, id.String(), t.STAN, t.RRN, t.MTI, t.PANMasked, t.Amount, t.CurrencyCode, t.TerminalID, t.MerchantID, string(t.Status), t.ResponseCode, t.RequestHex, t.ResponseHex)
 
-	if err := row.Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	if err := row.Scan(&t.CreatedAt, &t.UpdatedAt); err != nil {
 		return nil, fmt.Errorf("insert acquirer transaction: %w", err)
 	}
+	t.ID = id.String()
 
 	return t, nil
 }
@@ -88,19 +95,25 @@ func (r *IssuerTransactionRepository) CreateIssuerTransaction(ctx context.Contex
 		return nil, fmt.Errorf("transaction is nil")
 	}
 
+	id, err := uuid.NewV7()
+	if err != nil {
+		return nil, fmt.Errorf("generate uuid: %w", err)
+	}
+
 	row := r.pool.QueryRow(ctx, `
 		INSERT INTO issuer_transactions (
-			stan, rrn, mti, pan_masked, amount, currency_code,
+			id, stan, rrn, mti, pan_masked, amount, currency_code,
 			status, response_code, auth_code, decline_reason,
 			balance_before, balance_after, processing_time_ms
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-		RETURNING id, created_at, updated_at
-	`, t.STAN, t.RRN, t.MTI, t.PANMasked, t.Amount, t.CurrencyCode, string(t.Status), t.ResponseCode, t.AuthCode, t.DeclineReason, t.BalanceBefore, t.BalanceAfter, t.ProcessingTimeMs)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+		RETURNING created_at, updated_at
+	`, id.String(), t.STAN, t.RRN, t.MTI, t.PANMasked, t.Amount, t.CurrencyCode, string(t.Status), t.ResponseCode, t.AuthCode, t.DeclineReason, t.BalanceBefore, t.BalanceAfter, t.ProcessingTimeMs)
 
-	if err := row.Scan(&t.ID, &t.CreatedAt, &t.UpdatedAt); err != nil {
+	if err := row.Scan(&t.CreatedAt, &t.UpdatedAt); err != nil {
 		return nil, fmt.Errorf("insert issuer transaction: %w", err)
 	}
+	t.ID = id.String()
 
 	return t, nil
 }

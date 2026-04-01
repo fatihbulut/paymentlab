@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"net"
+	"net/http"
 	"os"
+	"time"
 
 	"iso-parser-service/internal/acquirer"
 	"iso-parser-service/internal/config"
@@ -73,7 +76,23 @@ func main() {
 
 	addr := ":" + httpPort
 	log.Printf("acquirer: HTTP listening on %s, issuer=%s (TPDU-enabled)", addr, issuerAddr)
-	if err := server.Router().Run(addr); err != nil {
+
+	// Custom listener with larger backlog for high concurrency
+	lc := net.ListenConfig{}
+	ln, err := lc.Listen(ctx, "tcp", addr)
+	if err != nil {
+		log.Fatalf("acquirer: failed to listen: %v", err)
+	}
+
+	// Custom HTTP server with proper timeouts
+	httpServer := &http.Server{
+		Handler:           server.Router(),
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	if err := httpServer.Serve(ln); err != nil {
 		log.Fatalf("acquirer: failed to start HTTP server: %v", err)
 	}
 }

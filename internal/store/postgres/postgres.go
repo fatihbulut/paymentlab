@@ -32,8 +32,8 @@ func New(ctx context.Context, databaseURL string) (*PostgresStore, error) {
 		return nil, fmt.Errorf("parse pg config: %w", err)
 	}
 
-	cfg.MaxConns = 150
-	cfg.MinConns = 10
+	cfg.MaxConns = 80
+	cfg.MinConns = 5
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
 	cfg.HealthCheckPeriod = 30 * time.Second

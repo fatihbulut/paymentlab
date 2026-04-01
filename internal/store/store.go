@@ -61,6 +61,14 @@ type IssuerTransaction struct {
 	UpdatedAt        time.Time
 }
 
+// AuthorizeDebitResult holds the result of an atomic card lookup + debit operation.
+type AuthorizeDebitResult struct {
+	Card          *Card // Always populated if card found (nil if not found)
+	BalanceBefore int64 // Set only when Debited == true
+	BalanceAfter  int64 // Set only when Debited == true
+	Debited       bool  // True if balance was sufficient and deducted
+}
+
 type CardStore interface {
 	CreateCard(ctx context.Context, c *Card) (*Card, error)
 	GetCardByID(ctx context.Context, id string) (*Card, error)
@@ -71,6 +79,7 @@ type CardStore interface {
 	SoftDeleteCard(ctx context.Context, id string) error
 	UpdateCardBalance(ctx context.Context, id string, newAvailableBalance int64) error
 	DebitIfSufficient(ctx context.Context, id string, amount int64) (before int64, after int64, ok bool, err error)
+	AuthorizeAndDebit(ctx context.Context, pan string, amount int64) (*AuthorizeDebitResult, error)
 }
 
 type AcquirerTransactionStore interface {

@@ -33,75 +33,69 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 
 	respMsg := decideResponse(reqMsg)
 
-	var issuerTxID *string
-	if s.store != nil {
-		amount, amountErr := parseAmount12(reqMsg.AmountTrn)
-		if amountErr != nil {
-			amount = 0
-		}
-		tx := &store.IssuerTransaction{
-			STAN:         strings.TrimSpace(reqMsg.STAN),
-			RRN:          nil,
-			MTI:          strings.TrimSpace(reqMsg.MTI),
-			PANMasked:    maskPAN(reqMsg.PAN),
-			Amount:       amount,
-			CurrencyCode: strings.TrimSpace(reqMsg.CurCodeTrn),
-			Status:       store.TransactionStatus("RECEIVED"),
-		}
-
-		created, createErr := s.store.IssuerTransactions().CreateIssuerTransaction(ctx, tx)
-		if createErr == nil && created != nil {
-			id := created.ID
-			issuerTxID = &id
-		}
-	}
-
+	// Auth engine (contains the only sync DB call: AuthorizeAndDebit)
+	var decision *auth.Decision
 	if s.auth != nil {
-		authResp, decision, authErr := s.auth.Authorize(ctx, reqMsg)
+		authResp, dec, authErr := s.auth.Authorize(ctx, reqMsg)
+		decision = dec
 		if authErr == nil && authResp != nil {
 			respMsg = authResp
-		}
-
-		if s.store != nil && issuerTxID != nil {
-			status := store.TransactionStatus("DECLINED")
-			if respMsg != nil && respMsg.RespCode == auth.RespApproved {
-				status = store.TransactionStatus("APPROVED")
-			}
-			var rc *string
-			if respMsg != nil && strings.TrimSpace(respMsg.RespCode) != "" {
-				v := strings.TrimSpace(respMsg.RespCode)
-				rc = &v
-			}
-			var authCode *string
-			var declineReason *string
-			var balanceBefore *int64
-			var balanceAfter *int64
-			var durationMs *float64
-			if decision != nil {
-				authCode = decision.AuthCode
-				declineReason = decision.DeclineReason
-				balanceBefore = decision.BalanceBefore
-				balanceAfter = decision.BalanceAfter
-				d := decision.DurationMs
-				durationMs = &d
-			}
-			_ = s.store.IssuerTransactions().UpdateIssuerTransaction(
-				ctx,
-				*issuerTxID,
-				status,
-				rc,
-				authCode,
-				declineReason,
-				balanceBefore,
-				balanceAfter,
-				durationMs,
-			)
 		}
 	}
 
 	hexResp, err := iso.PackMessageToHex(respMsg)
 	if err != nil {
 		return "", nil, fmt.Errorf("pack response: %w", err)
+	}
+
+	// Async audit log: single INSERT with final status (non-blocking)
+	if s.store != nil {
+		amount, amountErr := parseAmount12(reqMsg.AmountTrn)
+		if amountErr != nil {
+			amount = 0
+		}
+
+		status := store.TransactionStatus("DECLINED")
+		if respMsg != nil && respMsg.RespCode == auth.RespApproved {
+			status = store.TransactionStatus("APPROVED")
+		}
+		var rc *string
+		if respMsg != nil && strings.TrimSpace(respMsg.RespCode) != "" {
+			v := strings.TrimSpace(respMsg.RespCode)
+			rc = &v
+		}
+		var authCodePtr *string
+		var declineReason *string
+		var balanceBefore *int64
+		var balanceAfter *int64
+		var durationMs *float64
+		if decision != nil {
+			authCodePtr = decision.AuthCode
+			declineReason = decision.DeclineReason
+			balanceBefore = decision.BalanceBefore
+			balanceAfter = decision.BalanceAfter
+			d := decision.DurationMs
+			durationMs = &d
+		}
+
+		tx := &store.IssuerTransaction{
+			STAN:             strings.TrimSpace(reqMsg.STAN),
+			MTI:              strings.TrimSpace(reqMsg.MTI),
+			PANMasked:        maskPAN(reqMsg.PAN),
+			Amount:           amount,
+			CurrencyCode:     strings.TrimSpace(reqMsg.CurCodeTrn),
+			Status:           status,
+			ResponseCode:     rc,
+			AuthCode:         authCodePtr,
+			DeclineReason:    declineReason,
+			BalanceBefore:    balanceBefore,
+			BalanceAfter:     balanceAfter,
+			ProcessingTimeMs: durationMs,
+		}
+
+		go func() {
+			_, _ = s.store.IssuerTransactions().CreateIssuerTransaction(context.Background(), tx)
+		}()
 	}
 
 	return hexResp, respMsg, nil

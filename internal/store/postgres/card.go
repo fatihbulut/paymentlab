@@ -254,3 +254,65 @@ func (r *CardRepository) DebitIfSufficient(ctx context.Context, id string, amoun
 
 	return before, after, true, nil
 }
+
+// AuthorizeAndDebit atomically looks up a card by PAN and debits the amount in a single query.
+// Returns card data + debit result. If card not found, result is nil. If insufficient balance,
+// result.Debited is false but result.Card is populated.
+func (r *CardRepository) AuthorizeAndDebit(ctx context.Context, pan string, amount int64) (*store.AuthorizeDebitResult, error) {
+	if amount <= 0 {
+		return nil, fmt.Errorf("amount must be > 0")
+	}
+
+	row := r.pool.QueryRow(ctx, `
+		WITH card_lookup AS (
+			SELECT id, pan, expiry_date, card_status, scheme, currency_code,
+				credit_limit, available_balance, pin_hash, cvv_hash,
+				created_at, updated_at
+			FROM cards
+			WHERE pan = $1
+		),
+		debited AS (
+			UPDATE cards
+			SET available_balance = available_balance - $2,
+				updated_at = NOW()
+			WHERE id = (SELECT id FROM card_lookup)
+				AND available_balance >= $2
+				AND card_status = 'ACTIVE'
+			RETURNING available_balance + $2 AS balance_before,
+				available_balance AS balance_after
+		)
+		SELECT cl.id, cl.pan, cl.expiry_date, cl.card_status, cl.scheme, cl.currency_code,
+			cl.credit_limit, cl.available_balance, cl.pin_hash, cl.cvv_hash,
+			cl.created_at, cl.updated_at,
+			d.balance_before, d.balance_after
+		FROM card_lookup cl
+		LEFT JOIN debited d ON true
+	`, pan, amount)
+
+	var c store.Card
+	var status string
+	var balanceBefore, balanceAfter *int64
+
+	if err := row.Scan(
+		&c.ID, &c.PAN, &c.ExpiryDate, &status, &c.Scheme, &c.CurrencyCode,
+		&c.CreditLimit, &c.AvailableBalance, &c.PinHash, &c.CvvHash,
+		&c.CreatedAt, &c.UpdatedAt,
+		&balanceBefore, &balanceAfter,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil // Card not found
+		}
+		return nil, fmt.Errorf("authorize and debit: %w", err)
+	}
+
+	c.Status = store.CardStatus(status)
+	result := &store.AuthorizeDebitResult{Card: &c}
+
+	if balanceBefore != nil && balanceAfter != nil {
+		result.Debited = true
+		result.BalanceBefore = *balanceBefore
+		result.BalanceAfter = *balanceAfter
+	}
+
+	return result, nil
+}

@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -22,8 +23,8 @@ func ServeTCP(addr string, svc *Service) error {
 		return err
 	}
 
-	// Get worker pool size from environment (default: 5000)
-	workerPoolSize := 5000
+	// Get worker pool size from environment (default: 500)
+	workerPoolSize := 500
 	if poolEnv := os.Getenv("ISSUER_WORKER_POOL"); poolEnv != "" {
 		if size, err := strconv.Atoi(poolEnv); err == nil && size > 0 {
 			workerPoolSize = size
@@ -45,6 +46,9 @@ func ServeTCP(addr string, svc *Service) error {
 func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 	defer conn.Close()
 	remote := conn.RemoteAddr().String()
+
+	// Write mutex to prevent concurrent writes to the same TCP connection
+	var writeMu sync.Mutex
 
 	// Worker pool for concurrent request processing
 	workerPool := make(chan struct{}, workerPoolSize)
@@ -97,7 +101,10 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 			default:
 			}
 
-			if err := writeTPDUFrame(conn, hexResp); err != nil {
+			writeMu.Lock()
+			err = writeTPDUFrame(conn, hexResp)
+			writeMu.Unlock()
+			if err != nil {
 				log.Printf("issuer: write error to %s: %v", remote, err)
 				return
 			}

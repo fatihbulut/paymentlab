@@ -1,6 +1,7 @@
 package acquirer
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -193,43 +194,6 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		attribute.String("transaction.pan_masked", maskPAN(req.PAN)),
 	)
 
-	var txID *string
-	if s.appStore != nil {
-		amount, amountErr := parseAmount12(req.AmountTrn)
-		if amountErr != nil {
-			amount = 0
-		}
-
-		var terminalID *string
-		if strings.TrimSpace(req.TerminalID) != "" {
-			t := strings.TrimSpace(req.TerminalID)
-			terminalID = &t
-		}
-		var merchantID *string
-		if strings.TrimSpace(req.MerchantID) != "" {
-			m := strings.TrimSpace(req.MerchantID)
-			merchantID = &m
-		}
-
-		tx := &store.AcquirerTransaction{
-			STAN:         strings.TrimSpace(req.STAN),
-			MTI:          strings.TrimSpace(req.MTI),
-			PANMasked:    maskPAN(req.PAN),
-			Amount:       amount,
-			CurrencyCode: strings.TrimSpace(req.CurCodeTrn),
-			TerminalID:   terminalID,
-			MerchantID:   merchantID,
-			Status:       store.TransactionStatus("PENDING"),
-			RequestHex:   &hexReq,
-		}
-
-		created, err := s.appStore.AcquirerTransactions().CreateAcquirerTransaction(ctx, tx)
-		if err == nil && created != nil {
-			id := created.ID
-			txID = &id
-		}
-	}
-
 	// Convert hex string to raw bytes for Switch
 	rawISOBytes, err := hex.DecodeString(hexReq)
 	if err != nil {
@@ -244,9 +208,8 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	// Use Switch for TPDU-based communication
 	response, err := s.switchInstance.HandleTerminalRequest(ctx, rawISOBytes)
 	if err != nil {
-		if s.appStore != nil && txID != nil {
-			_ = s.appStore.AcquirerTransactions().UpdateAcquirerTransactionStatus(ctx, *txID, store.TransactionStatus("ERROR"), nil, nil)
-		}
+		// Async audit log for error case
+		s.asyncLogAcquirerTx(&req, &hexReq, nil, store.TransactionStatus("ERROR"))
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "switch_communication_error"),
@@ -260,9 +223,8 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 
 	respMsg, err := iso.ParseHexToMessage(hexResp)
 	if err != nil {
-		if s.appStore != nil && txID != nil {
-			_ = s.appStore.AcquirerTransactions().UpdateAcquirerTransactionStatus(ctx, *txID, store.TransactionStatus("ERROR"), nil, &hexResp)
-		}
+		// Async audit log for parse error
+		s.asyncLogAcquirerTx(&req, &hexReq, &hexResp, store.TransactionStatus("ERROR"))
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
 			attribute.String("error", "response_parse_error"),
@@ -271,13 +233,14 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		return
 	}
 
-	if s.appStore != nil && txID != nil {
+	// Async audit log: single INSERT with final status (non-blocking)
+	{
 		status := store.TransactionStatus("DECLINED")
 		if respMsg.RespCode == "00" {
 			status = store.TransactionStatus("APPROVED")
 		}
 		rc := respMsg.RespCode
-		_ = s.appStore.AcquirerTransactions().UpdateAcquirerTransactionStatus(ctx, *txID, status, &rc, &hexResp)
+		s.asyncLogAcquirerTx(&req, &hexReq, &hexResp, status, &rc)
 	}
 
 	// Record metrics
@@ -378,6 +341,50 @@ func (s *HTTPServer) handleListIssuerTransactions(c *gin.Context) {
 		txs = []store.IssuerTransaction{}
 	}
 	c.JSON(http.StatusOK, gin.H{"transactions": txs})
+}
+
+// asyncLogAcquirerTx fires a non-blocking goroutine to INSERT a single acquirer
+// transaction record with its final status. Optional responseCode can be provided.
+func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hexResp *string, status store.TransactionStatus, responseCode ...*string) {
+	if s.appStore == nil {
+		return
+	}
+	amount, err := parseAmount12(req.AmountTrn)
+	if err != nil {
+		amount = 0
+	}
+	var terminalID *string
+	if strings.TrimSpace(req.TerminalID) != "" {
+		t := strings.TrimSpace(req.TerminalID)
+		terminalID = &t
+	}
+	var merchantID *string
+	if strings.TrimSpace(req.MerchantID) != "" {
+		m := strings.TrimSpace(req.MerchantID)
+		merchantID = &m
+	}
+	var rc *string
+	if len(responseCode) > 0 {
+		rc = responseCode[0]
+	}
+
+	tx := &store.AcquirerTransaction{
+		STAN:         strings.TrimSpace(req.STAN),
+		MTI:          strings.TrimSpace(req.MTI),
+		PANMasked:    maskPAN(req.PAN),
+		Amount:       amount,
+		CurrencyCode: strings.TrimSpace(req.CurCodeTrn),
+		TerminalID:   terminalID,
+		MerchantID:   merchantID,
+		Status:       status,
+		ResponseCode: rc,
+		RequestHex:   hexReq,
+		ResponseHex:  hexResp,
+	}
+
+	go func() {
+		_, _ = s.appStore.AcquirerTransactions().CreateAcquirerTransaction(context.Background(), tx)
+	}()
 }
 
 func parseAmount12(s string) (int64, error) {

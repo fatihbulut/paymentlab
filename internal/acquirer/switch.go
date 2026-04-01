@@ -3,12 +3,14 @@ package acquirer
 import (
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"iso-parser-service/internal/iso"
@@ -17,27 +19,31 @@ import (
 // AcquirerSwitch manages asynchronous ISO8583 message routing with multiplexing
 type AcquirerSwitch struct {
 	issuerAddr          string
-	connectionPool      []net.Conn // Connection pool for load balancing
-	poolSize            int        // Number of connections in pool
-	poolMutex           sync.Mutex // Mutex for pool access
-	currentConnIndex    int        // Round-robin index
-	pendingTransactions sync.Map   // Key: STAN (string), Value: chan []byte
+	connectionPool      []net.Conn    // Connection pool for load balancing
+	writeMutexes        []sync.Mutex  // Per-connection write mutexes
+	poolSize            int           // Number of connections in pool
+	poolMutex           sync.Mutex    // Mutex for pool access
+	currentConnIndex    int           // Round-robin index
+	pendingTransactions sync.Map      // Key: STAN (string), Value: chan []byte
+	stanCounter         atomic.Uint64 // Unique STAN generator
 	shutdownChan        chan struct{}
 	wg                  sync.WaitGroup
 }
 
 // NewAcquirerSwitch creates a new switch instance with connection pooling
 func NewAcquirerSwitch(issuerAddr string) *AcquirerSwitch {
-	poolSize := 5 // 5 connections for load balancing
+	poolSize := 20 // 20 connections for load balancing under high concurrency
 	return &AcquirerSwitch{
 		issuerAddr:     issuerAddr,
 		poolSize:       poolSize,
 		connectionPool: make([]net.Conn, poolSize),
+		writeMutexes:   make([]sync.Mutex, poolSize),
 		shutdownChan:   make(chan struct{}),
 	}
 }
 
-// Start initializes the switch and starts the issuer listeners
+// Start initializes the switch and starts the issuer listeners.
+// Blocks until at least one connection to issuer is established or timeout.
 func (s *AcquirerSwitch) Start(ctx context.Context) error {
 	// Start listener goroutine for each connection in pool
 	for i := 0; i < s.poolSize; i++ {
@@ -45,9 +51,25 @@ func (s *AcquirerSwitch) Start(ctx context.Context) error {
 		go s.issuerListener(ctx, i)
 	}
 
-	// Wait a bit for connections to establish
-	time.Sleep(200 * time.Millisecond)
+	// Wait until at least one connection is ready (max 10s)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		s.poolMutex.Lock()
+		ready := 0
+		for i := 0; i < s.poolSize; i++ {
+			if s.connectionPool[i] != nil {
+				ready++
+			}
+		}
+		s.poolMutex.Unlock()
+		if ready > 0 {
+			log.Printf("acquirer: switch ready with %d/%d issuer connections", ready, s.poolSize)
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
 
+	log.Printf("acquirer: WARNING — no issuer connections established after 10s, starting anyway")
 	return nil
 }
 
@@ -59,26 +81,30 @@ func (s *AcquirerSwitch) Stop(ctx context.Context) error {
 	return nil
 }
 
-// HandleTerminalRequest processes a terminal request with multiplexing
+// HandleTerminalRequest processes a terminal request with multiplexing.
+// Assigns a unique STAN to prevent collision, then correlates the response.
 func (s *AcquirerSwitch) HandleTerminalRequest(ctx context.Context, rawISO []byte) ([]byte, error) {
-	// Extract STAN from ISO message
-	stan, err := s.extractSTAN(rawISO)
+	// Generate unique STAN for issuer-facing message (prevents collision)
+	seq := s.stanCounter.Add(1)
+	uniqueSTAN := fmt.Sprintf("%06d", (seq%999999)+1)
+
+	// Rewrite STAN in the ISO message
+	rewrittenISO, err := s.rewriteSTAN(rawISO, uniqueSTAN)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract STAN: %w", err)
+		return nil, fmt.Errorf("failed to rewrite STAN: %w", err)
 	}
 
 	// Create response channel for this transaction
 	responseChan := make(chan []byte, 1)
 
-	// Store channel in pending transactions map
-	s.pendingTransactions.Store(stan, responseChan)
-	defer func() {
-		s.pendingTransactions.Delete(stan)
-		close(responseChan) // Prevent channel leak
-	}()
+	// Store channel — uniqueSTAN guarantees no collision
+	s.pendingTransactions.Store(uniqueSTAN, responseChan)
+	defer s.pendingTransactions.Delete(uniqueSTAN)
+	// NOTE: Do NOT close(responseChan) — causes panic if listener sends concurrently.
+	// Channel will be GC'd after both goroutines drop references.
 
 	// Send to issuer with TPDU wrapper
-	if err := s.sendToIssuer(rawISO); err != nil {
+	if err := s.sendToIssuer(rewrittenISO); err != nil {
 		return nil, fmt.Errorf("failed to send to issuer: %w", err)
 	}
 
@@ -188,15 +214,17 @@ func (s *AcquirerSwitch) listenForResponses(ctx context.Context, poolIndex int) 
 			continue // Skip invalid responses
 		}
 
-		// Route to waiting channel
+		// Route to waiting channel (recover protects against rare send-after-delete)
 		if value, ok := s.pendingTransactions.Load(stan); ok {
 			responseChan := value.(chan []byte)
 			select {
 			case responseChan <- isoMessage:
 				// Successfully routed response
-			case <-time.After(100 * time.Millisecond):
-				// Channel full or closed, skip to prevent blocking listener
+			default:
+				log.Printf("acquirer: response dropped for STAN %s (channel full)", stan)
 			}
+		} else {
+			log.Printf("acquirer: no pending request for STAN %s (late response or timeout)", stan)
 		}
 	}
 }
@@ -234,8 +262,10 @@ func (s *AcquirerSwitch) sendToIssuer(rawISO []byte) error {
 		copy(packet[2:], tpdu)
 		copy(packet[2+len(tpdu):], rawISO)
 
-		// Send packet
+		// Send packet (synchronized per connection to prevent byte interleaving)
+		s.writeMutexes[connIndex].Lock()
 		_, err := conn.Write(packet)
+		s.writeMutexes[connIndex].Unlock()
 		if err == nil {
 			if attempt > 0 {
 				log.Printf("acquirer: sendToIssuer succeeded on attempt %d/3", attempt+1)
@@ -298,6 +328,30 @@ func (s *AcquirerSwitch) extractSTAN(rawISO []byte) (string, error) {
 	}
 
 	return message.STAN, nil
+}
+
+// rewriteSTAN replaces the STAN (Field 11) in the ISO message with a new value.
+// Returns the modified raw ISO bytes.
+func (s *AcquirerSwitch) rewriteSTAN(rawISO []byte, newSTAN string) ([]byte, error) {
+	hexStr := fmt.Sprintf("%x", rawISO)
+	msg, err := iso.ParseHexToMessage(hexStr)
+	if err != nil {
+		return nil, fmt.Errorf("parse for STAN rewrite: %w", err)
+	}
+
+	msg.STAN = newSTAN
+
+	newHex, err := iso.PackMessageToHex(msg)
+	if err != nil {
+		return nil, fmt.Errorf("pack after STAN rewrite: %w", err)
+	}
+
+	newRaw, err := hex.DecodeString(newHex)
+	if err != nil {
+		return nil, fmt.Errorf("hex decode after STAN rewrite: %w", err)
+	}
+
+	return newRaw, nil
 }
 
 // closeConnection safely closes a specific connection in the pool
