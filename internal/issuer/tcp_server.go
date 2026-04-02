@@ -23,8 +23,8 @@ func ServeTCP(addr string, svc *Service) error {
 		return err
 	}
 
-	// Get worker pool size from environment (default: 500)
-	workerPoolSize := 500
+	// Get worker pool size from environment (default: 1000)
+	workerPoolSize := 1000
 	if poolEnv := os.Getenv("ISSUER_WORKER_POOL"); poolEnv != "" {
 		if size, err := strconv.Atoi(poolEnv); err == nil && size > 0 {
 			workerPoolSize = size
@@ -60,7 +60,7 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 	for {
 		start := time.Now()
 
-		hexReq, err := readTPDUFrame(conn)
+		tpduHeader, hexReq, err := readTPDUFrame(conn)
 		if err != nil {
 			if err != io.EOF {
 				log.Printf("issuer: read error from %s: %v", remote, err)
@@ -72,7 +72,7 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 		workerPool <- struct{}{}
 
 		// Process request in goroutine for concurrent handling
-		go func(req string, startTime time.Time, reqCtx context.Context) {
+		go func(req string, tpdu []byte, startTime time.Time, reqCtx context.Context) {
 			defer func() { <-workerPool }() // Release worker slot
 
 			// Check if context is cancelled
@@ -102,61 +102,64 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 			}
 
 			writeMu.Lock()
-			err = writeTPDUFrame(conn, hexResp)
+			err = writeTPDUFrame(conn, hexResp, tpdu)
 			writeMu.Unlock()
 			if err != nil {
 				log.Printf("issuer: write error to %s: %v", remote, err)
 				return
 			}
-		}(hexReq, start, ctx)
+		}(hexReq, tpduHeader, start, ctx)
 	}
 }
 
-// readTPDUFrame reads TPDU-wrapped frames from acquirer switch
-func readTPDUFrame(conn net.Conn) (string, error) {
+// readTPDUFrame reads TPDU-wrapped frames from acquirer switch.
+// Returns the 5-byte TPDU header (for echo-back) and the ISO hex string.
+func readTPDUFrame(conn net.Conn) ([]byte, string, error) {
 	// Read 2-byte length prefix
 	lengthBytes := make([]byte, 2)
 	if _, err := io.ReadFull(conn, lengthBytes); err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	length := binary.BigEndian.Uint16(lengthBytes)
 	if length == 0 || length > 8192 {
-		return "", fmt.Errorf("invalid packet length: %d", length)
+		return nil, "", fmt.Errorf("invalid packet length: %d", length)
 	}
 
 	// Read packet data
 	packet := make([]byte, length)
 	if _, err := io.ReadFull(conn, packet); err != nil {
-		return "", err
+		return nil, "", err
 	}
 
 	// Strip TPDU (first 5 bytes)
 	if len(packet) < 5 {
-		return "", fmt.Errorf("packet too short for TPDU")
+		return nil, "", fmt.Errorf("packet too short for TPDU")
 	}
 
+	tpduHeader := make([]byte, 5)
+	copy(tpduHeader, packet[:5])
 	isoData := packet[5:]
-	return fmt.Sprintf("%x", isoData), nil
+	return tpduHeader, hex.EncodeToString(isoData), nil
 }
 
-// writeTPDUFrame writes TPDU-wrapped response
-func writeTPDUFrame(conn net.Conn, hexResp string) error {
+// writeTPDUFrame writes TPDU-wrapped response, echoing back the request's TPDU header
+// so the acquirer can extract the correlation ID.
+func writeTPDUFrame(conn net.Conn, hexResp string, tpduHeader []byte) error {
 	// Convert hex string to bytes
 	respBytes, err := hex.DecodeString(hexResp)
 	if err != nil {
 		return fmt.Errorf("decode response hex failed: %w", err)
 	}
 
-	// Create TPDU wrapper: [2-byte Length] + [5-byte TPDU] + Response
-	tpdu := []byte{0x60, 0x00, 0x01, 0x00, 0x00}
-	totalLen := len(tpdu) + len(respBytes)
+	// Echo back the request's TPDU header (carries correlation ID in bytes 1-4)
+	totalLen := len(tpduHeader) + len(respBytes)
 
-	// Create packet
+	// Create packet: [2-byte length] + [TPDU] + [ISO]
 	packet := make([]byte, 2+totalLen)
 	binary.BigEndian.PutUint16(packet[:2], uint16(totalLen))
-	copy(packet[2:], tpdu)
-	copy(packet[2+len(tpdu):], respBytes)
+	copy(packet[2:], tpduHeader)
+	copy(packet[2+len(tpduHeader):], respBytes)
 
 	// Send packet
 	_, err = conn.Write(packet)

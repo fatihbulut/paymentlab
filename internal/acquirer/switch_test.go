@@ -3,6 +3,7 @@ package acquirer
 import (
 	"errors"
 	"net"
+	"sync"
 	"testing"
 	"time"
 )
@@ -13,7 +14,7 @@ type mockConn struct {
 	failErr    error
 }
 
-func (m *mockConn) Read(b []byte) (n int, err error)  { return 0, nil }
+func (m *mockConn) Read(b []byte) (n int, err error)   { return 0, nil }
 func (m *mockConn) Close() error                       { return nil }
 func (m *mockConn) LocalAddr() net.Addr                { return nil }
 func (m *mockConn) RemoteAddr() net.Addr               { return nil }
@@ -38,12 +39,13 @@ func TestSendToIssuer_RetrySuccessOnThirdAttempt(t *testing.T) {
 	}
 
 	s := &AcquirerSwitch{
-		connectionPool: []net.Conn{mockConn},
-		poolSize:       1,
+		connectionPool:   []net.Conn{mockConn},
+		writeMutexes:     make([]sync.Mutex, 1),
+		poolSize:         1,
 		currentConnIndex: 0,
 	}
 
-	err := s.sendToIssuer([]byte("test"))
+	err := s.sendToIssuer([]byte("test"), 1)
 
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
@@ -62,12 +64,13 @@ func TestSendToIssuer_AllAttemptsFail(t *testing.T) {
 	}
 
 	s := &AcquirerSwitch{
-		connectionPool: []net.Conn{mockConn},
-		poolSize:       1,
+		connectionPool:   []net.Conn{mockConn},
+		writeMutexes:     make([]sync.Mutex, 1),
+		poolSize:         1,
 		currentConnIndex: 0,
 	}
 
-	err := s.sendToIssuer([]byte("test"))
+	err := s.sendToIssuer([]byte("test"), 1)
 
 	if err == nil {
 		t.Fatal("expected error after 3 attempts, got nil")

@@ -3,7 +3,6 @@ package acquirer
 import (
 	"context"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -12,8 +11,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"iso-parser-service/internal/iso"
 )
 
 // AcquirerSwitch manages asynchronous ISO8583 message routing with multiplexing
@@ -24,15 +21,15 @@ type AcquirerSwitch struct {
 	poolSize            int           // Number of connections in pool
 	poolMutex           sync.Mutex    // Mutex for pool access
 	currentConnIndex    int           // Round-robin index
-	pendingTransactions sync.Map      // Key: STAN (string), Value: chan []byte
-	stanCounter         atomic.Uint64 // Unique STAN generator
+	pendingTransactions sync.Map      // Key: uint32 (corrID), Value: chan []byte
+	corrIDCounter       atomic.Uint32 // Unique correlation ID generator
 	shutdownChan        chan struct{}
 	wg                  sync.WaitGroup
 }
 
 // NewAcquirerSwitch creates a new switch instance with connection pooling
 func NewAcquirerSwitch(issuerAddr string) *AcquirerSwitch {
-	poolSize := 20 // 20 connections for load balancing under high concurrency
+	poolSize := 40 // 40 connections for load balancing under 1000 VU concurrency
 	return &AcquirerSwitch{
 		issuerAddr:     issuerAddr,
 		poolSize:       poolSize,
@@ -82,37 +79,32 @@ func (s *AcquirerSwitch) Stop(ctx context.Context) error {
 }
 
 // HandleTerminalRequest processes a terminal request with multiplexing.
-// Assigns a unique STAN to prevent collision, then correlates the response.
+// Embeds a unique correlation ID in the TPDU header — no ISO re-parsing needed.
 func (s *AcquirerSwitch) HandleTerminalRequest(ctx context.Context, rawISO []byte) ([]byte, error) {
-	// Generate unique STAN for issuer-facing message (prevents collision)
-	seq := s.stanCounter.Add(1)
-	uniqueSTAN := fmt.Sprintf("%06d", (seq%999999)+1)
-
-	// Rewrite STAN in the ISO message
-	rewrittenISO, err := s.rewriteSTAN(rawISO, uniqueSTAN)
-	if err != nil {
-		return nil, fmt.Errorf("failed to rewrite STAN: %w", err)
-	}
+	// Generate unique correlation ID (embedded in TPDU, not in ISO message)
+	corrID := s.corrIDCounter.Add(1)
 
 	// Create response channel for this transaction
 	responseChan := make(chan []byte, 1)
 
-	// Store channel — uniqueSTAN guarantees no collision
-	s.pendingTransactions.Store(uniqueSTAN, responseChan)
-	defer s.pendingTransactions.Delete(uniqueSTAN)
+	// Store channel — corrID guarantees no collision
+	s.pendingTransactions.Store(corrID, responseChan)
+	defer s.pendingTransactions.Delete(corrID)
 	// NOTE: Do NOT close(responseChan) — causes panic if listener sends concurrently.
 	// Channel will be GC'd after both goroutines drop references.
 
-	// Send to issuer with TPDU wrapper
-	if err := s.sendToIssuer(rewrittenISO); err != nil {
+	// Send to issuer with TPDU wrapper (corrID embedded in TPDU bytes 1-4)
+	if err := s.sendToIssuer(rawISO, corrID); err != nil {
 		return nil, fmt.Errorf("failed to send to issuer: %w", err)
 	}
 
-	// Wait for response with timeout
+	// Wait for response with timeout (use NewTimer to allow early GC via Stop)
+	timer := time.NewTimer(15 * time.Second)
+	defer timer.Stop()
 	select {
 	case response := <-responseChan:
 		return response, nil
-	case <-time.After(15 * time.Second):
+	case <-timer.C:
 		return nil, errors.New("transaction timeout after 15 seconds")
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -202,36 +194,32 @@ func (s *AcquirerSwitch) listenForResponses(ctx context.Context, poolIndex int) 
 			return fmt.Errorf("read packet failed: %w", err)
 		}
 
-		// Strip TPDU and get ISO message
-		isoMessage, err := s.stripTPDU(packet)
-		if err != nil {
-			return fmt.Errorf("strip TPDU failed: %w", err)
+		// Extract correlation ID from TPDU bytes 1-4 (zero-alloc, no ISO parsing)
+		if len(packet) < 5 {
+			continue
 		}
+		corrID := binary.BigEndian.Uint32(packet[1:5])
+		isoMessage := packet[5:] // strip TPDU
 
-		// Extract STAN from response
-		stan, err := s.extractSTAN(isoMessage)
-		if err != nil {
-			continue // Skip invalid responses
-		}
-
-		// Route to waiting channel (recover protects against rare send-after-delete)
-		if value, ok := s.pendingTransactions.Load(stan); ok {
+		// Route to waiting channel
+		if value, ok := s.pendingTransactions.Load(corrID); ok {
 			responseChan := value.(chan []byte)
 			select {
 			case responseChan <- isoMessage:
 				// Successfully routed response
 			default:
-				log.Printf("acquirer: response dropped for STAN %s (channel full)", stan)
+				log.Printf("acquirer: response dropped for corrID %d (channel full)", corrID)
 			}
 		} else {
-			log.Printf("acquirer: no pending request for STAN %s (late response or timeout)", stan)
+			log.Printf("acquirer: no pending request for corrID %d (late response or timeout)", corrID)
 		}
 	}
 }
 
 // sendToIssuer sends message with TPDU wrapper using round-robin load balancing
-// with retry logic: 3 attempts with 100ms delay between retries
-func (s *AcquirerSwitch) sendToIssuer(rawISO []byte) error {
+// with retry logic: 3 attempts with 100ms delay between retries.
+// corrID is embedded in TPDU bytes 1-4 for correlation on response.
+func (s *AcquirerSwitch) sendToIssuer(rawISO []byte, corrID uint32) error {
 	var lastErr error
 
 	for attempt := 0; attempt < 3; attempt++ {
@@ -253,13 +241,15 @@ func (s *AcquirerSwitch) sendToIssuer(rawISO []byte) error {
 		}
 
 		// Create TPDU wrapper: [2-byte Length] + [5-byte TPDU] + ISO Message
-		tpdu := []byte{0x60, 0x00, 0x01, 0x00, 0x00}
+		// Bytes 1-4 carry the correlation ID for response routing
+		tpdu := [5]byte{0x60}
+		binary.BigEndian.PutUint32(tpdu[1:5], corrID)
 		totalLen := len(tpdu) + len(rawISO)
 
 		// Create packet: [2-byte length] + [TPDU] + [ISO]
 		packet := make([]byte, 2+totalLen)
 		binary.BigEndian.PutUint16(packet[:2], uint16(totalLen))
-		copy(packet[2:], tpdu)
+		copy(packet[2:], tpdu[:])
 		copy(packet[2+len(tpdu):], rawISO)
 
 		// Send packet (synchronized per connection to prevent byte interleaving)
@@ -305,53 +295,6 @@ func (s *AcquirerSwitch) readTPDUPacket(conn net.Conn) ([]byte, error) {
 	}
 
 	return packet, nil
-}
-
-// stripTPDU removes TPDU header from packet
-func (s *AcquirerSwitch) stripTPDU(packet []byte) ([]byte, error) {
-	if len(packet) < 5 {
-		return nil, errors.New("packet too short for TPDU")
-	}
-	return packet[5:], nil
-}
-
-// extractSTAN extracts Field 11 (STAN) from ISO message
-func (s *AcquirerSwitch) extractSTAN(rawISO []byte) (string, error) {
-	// Parse ISO message
-	message, err := iso.ParseHexToMessage(fmt.Sprintf("%x", rawISO))
-	if err != nil {
-		return "", fmt.Errorf("parse ISO message failed: %w", err)
-	}
-
-	if message.STAN == "" {
-		return "", errors.New("STAN field not found in message")
-	}
-
-	return message.STAN, nil
-}
-
-// rewriteSTAN replaces the STAN (Field 11) in the ISO message with a new value.
-// Returns the modified raw ISO bytes.
-func (s *AcquirerSwitch) rewriteSTAN(rawISO []byte, newSTAN string) ([]byte, error) {
-	hexStr := fmt.Sprintf("%x", rawISO)
-	msg, err := iso.ParseHexToMessage(hexStr)
-	if err != nil {
-		return nil, fmt.Errorf("parse for STAN rewrite: %w", err)
-	}
-
-	msg.STAN = newSTAN
-
-	newHex, err := iso.PackMessageToHex(msg)
-	if err != nil {
-		return nil, fmt.Errorf("pack after STAN rewrite: %w", err)
-	}
-
-	newRaw, err := hex.DecodeString(newHex)
-	if err != nil {
-		return nil, fmt.Errorf("hex decode after STAN rewrite: %w", err)
-	}
-
-	return newRaw, nil
 }
 
 // closeConnection safely closes a specific connection in the pool

@@ -20,11 +20,11 @@ services:
     command:
       - "postgres"
       - "-c"
-      - "max_connections=300"
+      - "max_connections=500"
       - "-c"
-      - "shared_buffers=256MB"
+      - "shared_buffers=512MB"
       - "-c"
-      - "effective_cache_size=512MB"
+      - "effective_cache_size=1GB"
       - "-c"
       - "work_mem=4MB"
       - "-c"
@@ -42,7 +42,7 @@ services:
     environment:
       DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@postgres:5432/paymentlab?sslmode=disable
       ISSUER_LISTEN: 0.0.0.0:5001
-      ISSUER_WORKER_POOL: ${ISSUER_WORKER_POOL:-500}
+      ISSUER_WORKER_POOL: ${ISSUER_WORKER_POOL:-1000}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
     depends_on:
