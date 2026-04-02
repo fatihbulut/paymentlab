@@ -48,6 +48,9 @@ services:
       DATABASE_URL: postgres://paymentlab:paymentlab@postgres:5432/paymentlab?sslmode=disable
       ISSUER_ADDR: issuer:5001
       ACQUIRER_PORT: 8081
+      MAX_CONCURRENT: 500
+      MAX_QUEUE: 100000
+      QUEUE_TIMEOUT_SEC: 60
     depends_on:
       - postgres
       - issuer

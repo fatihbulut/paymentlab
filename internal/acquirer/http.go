@@ -23,12 +23,14 @@ import (
 type HTTPServer struct {
 	switchInstance *AcquirerSwitch
 	appStore       store.Store
+	limiter        *ConcurrencyLimiter
 }
 
 func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPServer {
 	return &HTTPServer{
 		switchInstance: switchInstance,
 		appStore:       appStore,
+		limiter:        NewConcurrencyLimiter(),
 	}
 }
 
@@ -60,7 +62,13 @@ func (s *HTTPServer) Router() *gin.Engine {
 	})
 
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		c.JSON(http.StatusOK, gin.H{
+			"status":         "ok",
+			"active":         s.limiter.Active(),
+			"queued":         s.limiter.Queued(),
+			"max_concurrent": s.limiter.MaxConcurrent(),
+			"max_queue":      s.limiter.MaxQueue(),
+		})
 	})
 
 	router.POST("/v1/cards", s.handleCreateCard)
@@ -68,7 +76,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 	router.PUT("/v1/cards/:id", s.handleUpdateCard)
 	router.DELETE("/v1/cards/:id", s.handleDeleteCard)
 	router.POST("/v1/cards/:id/topup", s.handleTopUpCard)
-	router.POST("/v1/transaction", s.handleTransaction)
+	router.POST("/v1/transaction", s.limiter.Middleware(), s.handleTransaction)
 	router.GET("/v1/transactions", s.handleListTransactions)
 	router.GET("/v1/issuer-transactions", s.handleListIssuerTransactions)
 
