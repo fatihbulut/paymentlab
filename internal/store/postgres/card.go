@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -263,7 +265,16 @@ func (r *CardRepository) AuthorizeAndDebit(ctx context.Context, pan string, amou
 		return nil, fmt.Errorf("amount must be > 0")
 	}
 
-	row := r.pool.QueryRow(ctx, `
+	acquireStart := time.Now()
+	conn, err := r.pool.Acquire(ctx)
+	acquireMs := time.Since(acquireStart).Milliseconds()
+	if err != nil {
+		return nil, fmt.Errorf("acquire conn: %w", err)
+	}
+	defer conn.Release()
+
+	queryStart := time.Now()
+	row := conn.QueryRow(ctx, `
 		WITH card_lookup AS (
 			SELECT id, pan, expiry_date, card_status, scheme, currency_code,
 				credit_limit, available_balance, pin_hash, cvv_hash,
@@ -304,6 +315,9 @@ func (r *CardRepository) AuthorizeAndDebit(ctx context.Context, pan string, amou
 		}
 		return nil, fmt.Errorf("authorize and debit: %w", err)
 	}
+
+	queryMs := time.Since(queryStart).Milliseconds()
+	log.Printf("issuer: db pool_acquire=%dms query=%dms", acquireMs, queryMs)
 
 	c.Status = store.CardStatus(status)
 	result := &store.AuthorizeDebitResult{Card: &c}
