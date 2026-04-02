@@ -69,10 +69,12 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 		}
 
 		// Acquire worker slot (blocks if pool is full)
+		workerWaitStart := time.Now()
 		workerPool <- struct{}{}
+		workerWaitMs := time.Since(workerWaitStart).Milliseconds()
 
 		// Process request in goroutine for concurrent handling
-		go func(req string, tpdu []byte, startTime time.Time, reqCtx context.Context) {
+		go func(req string, tpdu []byte, startTime time.Time, wWaitMs int64, reqCtx context.Context) {
 			defer func() { <-workerPool }() // Release worker slot
 
 			// Check if context is cancelled
@@ -102,13 +104,22 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 			}
 
 			writeMu.Lock()
+			writeStart := time.Now()
 			err = writeTPDUFrame(conn, hexResp, tpdu)
+			writeMs := time.Since(writeStart).Milliseconds()
 			writeMu.Unlock()
 			if err != nil {
 				log.Printf("issuer: write error to %s: %v", remote, err)
 				return
 			}
-		}(hexReq, tpduHeader, start, ctx)
+
+			log.Printf("issuer: txn worker_wait=%dms handle=%dms write=%dms total=%dms",
+				wWaitMs,
+				time.Since(startTime).Milliseconds()-wWaitMs-writeMs,
+				writeMs,
+				time.Since(startTime).Milliseconds(),
+			)
+		}(hexReq, tpduHeader, start, workerWaitMs, ctx)
 	}
 }
 

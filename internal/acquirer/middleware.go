@@ -15,7 +15,7 @@ import (
 // 2. Queue slots — max requests waiting for a processing slot
 // Requests that exceed both limits get immediate 503.
 type ConcurrencyLimiter struct {
-	processing   chan struct{}  // bounded processing slots
+	processing   chan struct{} // bounded processing slots
 	queueTimeout time.Duration // max time to wait in queue
 
 	// Metrics (atomic for lock-free reads)
@@ -43,6 +43,8 @@ func NewConcurrencyLimiter() *ConcurrencyLimiter {
 // Middleware returns a Gin middleware that enforces concurrency limits.
 func (cl *ConcurrencyLimiter) Middleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		arrival := time.Now()
+
 		// Fast path: try to acquire a processing slot without blocking
 		select {
 		case cl.processing <- struct{}{}:
@@ -51,6 +53,7 @@ func (cl *ConcurrencyLimiter) Middleware() gin.HandlerFunc {
 				<-cl.processing
 				atomic.AddInt64(&cl.activeCount, -1)
 			}()
+			c.Set("queue_wait_ms", float64(0))
 			c.Next()
 			return
 		default:
@@ -80,6 +83,7 @@ func (cl *ConcurrencyLimiter) Middleware() gin.HandlerFunc {
 				<-cl.processing
 				atomic.AddInt64(&cl.activeCount, -1)
 			}()
+			c.Set("queue_wait_ms", float64(time.Since(arrival).Milliseconds()))
 			c.Next()
 
 		case <-timer.C:

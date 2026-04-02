@@ -3,7 +3,9 @@ package issuer
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
+	"time"
 
 	"iso-parser-service/internal/auth"
 	"iso-parser-service/internal/iso"
@@ -26,7 +28,10 @@ func NewService(appStore store.Store) *Service {
 // HandleHex processes a single ISO8583 hex request and returns the hex response
 // along with the parsed response message.
 func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.ISOMessage, error) {
+	handleStart := time.Now()
+
 	reqMsg, err := iso.ParseHexToMessage(hexReq)
+	parseDone := time.Now()
 	if err != nil {
 		return "", nil, fmt.Errorf("parse request: %w", err)
 	}
@@ -35,6 +40,7 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 
 	// Auth engine (contains the only sync DB call: AuthorizeAndDebit)
 	var decision *auth.Decision
+	authStart := time.Now()
 	if s.auth != nil {
 		authResp, dec, authErr := s.auth.Authorize(ctx, reqMsg)
 		decision = dec
@@ -42,11 +48,20 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 			respMsg = authResp
 		}
 	}
+	authDone := time.Now()
 
 	hexResp, err := iso.PackMessageToHex(respMsg)
+	packDone := time.Now()
 	if err != nil {
 		return "", nil, fmt.Errorf("pack response: %w", err)
 	}
+
+	log.Printf("issuer: handle parse=%dms auth=%dms pack=%dms total=%dms",
+		parseDone.Sub(handleStart).Milliseconds(),
+		authDone.Sub(authStart).Milliseconds(),
+		packDone.Sub(authDone).Milliseconds(),
+		time.Since(handleStart).Milliseconds(),
+	)
 
 	// Async audit log: single INSERT with final status (non-blocking)
 	if s.store != nil {

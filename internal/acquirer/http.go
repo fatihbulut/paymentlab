@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime"
 	"strconv"
@@ -187,6 +188,7 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	}
 
 	hexReq, err := iso.PackMessageToHex(&req)
+	packDone := time.Now()
 	if err != nil {
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
@@ -214,7 +216,9 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	}
 
 	// Use Switch for TPDU-based communication
+	switchStart := time.Now()
 	response, err := s.switchInstance.HandleTerminalRequest(ctx, rawISOBytes)
+	switchDone := time.Now()
 	if err != nil {
 		// Async audit log for error case
 		s.asyncLogAcquirerTx(&req, &hexReq, nil, store.TransactionStatus("ERROR"))
@@ -250,6 +254,21 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		rc := respMsg.RespCode
 		s.asyncLogAcquirerTx(&req, &hexReq, &hexResp, status, &rc)
 	}
+
+	parseDone := time.Now()
+
+	// Timing log
+	queueWait := float64(0)
+	if v, exists := c.Get("queue_wait_ms"); exists {
+		queueWait = v.(float64)
+	}
+	log.Printf("acquirer: txn queue=%.0fms pack=%dms switch_rtt=%dms parse=%dms total=%dms",
+		queueWait,
+		packDone.Sub(start).Milliseconds(),
+		switchDone.Sub(switchStart).Milliseconds(),
+		parseDone.Sub(switchDone).Milliseconds(),
+		time.Since(start).Milliseconds(),
+	)
 
 	// Record metrics
 	duration := time.Since(start)
