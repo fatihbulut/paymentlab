@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -29,7 +31,12 @@ type AcquirerSwitch struct {
 
 // NewAcquirerSwitch creates a new switch instance with connection pooling
 func NewAcquirerSwitch(issuerAddr string) *AcquirerSwitch {
-	poolSize := 40 // 40 connections for load balancing under 1000 VU concurrency
+	poolSize := 40 // default for local dev
+	if v := os.Getenv("ACQUIRER_TCP_POOL"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			poolSize = n
+		}
+	}
 	return &AcquirerSwitch{
 		issuerAddr:     issuerAddr,
 		poolSize:       poolSize,

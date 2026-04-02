@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -35,8 +37,8 @@ func New(ctx context.Context, databaseURL string) (*PostgresStore, error) {
 		return nil, fmt.Errorf("parse pg config: %w", err)
 	}
 
-	cfg.MaxConns = 120
-	cfg.MinConns = 20
+	cfg.MaxConns = int32(envIntOrDefault("DB_POOL_MAX", 120))
+	cfg.MinConns = int32(envIntOrDefault("DB_POOL_MIN", 20))
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
 	cfg.HealthCheckPeriod = 30 * time.Second
@@ -58,8 +60,8 @@ func New(ctx context.Context, databaseURL string) (*PostgresStore, error) {
 		return nil, fmt.Errorf("parse audit pg config: %w", err)
 	}
 
-	auditCfg.MaxConns = 30
-	auditCfg.MinConns = 5
+	auditCfg.MaxConns = int32(envIntOrDefault("DB_AUDIT_POOL_MAX", 30))
+	auditCfg.MinConns = int32(envIntOrDefault("DB_AUDIT_POOL_MIN", 5))
 	auditCfg.MaxConnLifetime = 30 * time.Minute
 	auditCfg.MaxConnIdleTime = 5 * time.Minute
 	auditCfg.HealthCheckPeriod = 30 * time.Second
@@ -105,6 +107,15 @@ func (s *PostgresStore) AcquirerTransactions() store.AcquirerTransactionStore {
 
 func (s *PostgresStore) IssuerTransactions() store.IssuerTransactionStore {
 	return s.issuerTransactions
+}
+
+func envIntOrDefault(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
 }
 
 func (s *PostgresStore) Close() error {
