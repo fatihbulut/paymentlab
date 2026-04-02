@@ -31,7 +31,8 @@ func New(ctx context.Context, databaseURL string) (*PostgresStore, error) {
 		return nil, fmt.Errorf("databaseURL is empty")
 	}
 
-	// Main pool: synchronous_commit=on (default), for AuthorizeAndDebit
+	// Main pool: synchronous_commit configurable via DB_SYNC_COMMIT (default "on")
+	// Set to "off" to eliminate WAL fsync wait on slow cloud disks (~100ms saving per query)
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("parse pg config: %w", err)
@@ -42,6 +43,14 @@ func New(ctx context.Context, databaseURL string) (*PostgresStore, error) {
 	cfg.MaxConnLifetime = 30 * time.Minute
 	cfg.MaxConnIdleTime = 5 * time.Minute
 	cfg.HealthCheckPeriod = 30 * time.Second
+
+	syncCommit := os.Getenv("DB_SYNC_COMMIT")
+	if syncCommit == "off" {
+		cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+			_, err := conn.Exec(ctx, "SET synchronous_commit = off")
+			return err
+		}
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

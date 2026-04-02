@@ -33,10 +33,6 @@ services:
       - "checkpoint_completion_target=0.9"
       - "-c"
       - "random_page_cost=1.1"
-      - "-c"
-      - "commit_delay=2000"
-      - "-c"
-      - "commit_siblings=3"
 
   issuer:
     image: ${ISSUER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-issuer:latest}
@@ -47,6 +43,7 @@ services:
       DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@postgres:5432/paymentlab?sslmode=disable
       ISSUER_LISTEN: 0.0.0.0:5001
       ISSUER_WORKER_POOL: ${ISSUER_WORKER_POOL:-200}
+      DB_SYNC_COMMIT: ${DB_SYNC_COMMIT:-off}
       DB_POOL_MAX: ${DB_POOL_MAX:-40}
       DB_POOL_MIN: ${DB_POOL_MIN:-5}
       DB_AUDIT_POOL_MAX: ${DB_AUDIT_POOL_MAX:-15}

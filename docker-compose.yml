@@ -25,10 +25,6 @@ services:
       - "checkpoint_completion_target=0.9"
       - "-c"
       - "random_page_cost=1.1"
-      - "-c"
-      - "commit_delay=2000"
-      - "-c"
-      - "commit_siblings=3"
 
   issuer:
     build:
