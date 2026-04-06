@@ -44,10 +44,10 @@ func main() {
 		defer pgStore.Close()
 		appStore = pgStore
 
-		if err := storepostgres.MigrateUp(ctx, pgStore.Pool(), "migrations"); err != nil {
-			log.Fatalf("failed to run migrations: %v", err)
+		if err := storepostgres.MigrateUp(ctx, pgStore.Pool(), "migrations/issuer"); err != nil {
+			log.Fatalf("failed to run issuer migrations: %v", err)
 		}
-		log.Println("postgres migrations applied")
+		log.Println("issuer postgres migrations applied")
 	}
 
 	listenAddr := os.Getenv("ISSUER_LISTEN")

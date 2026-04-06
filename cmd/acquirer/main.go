@@ -39,7 +39,23 @@ func main() {
 	cfg := config.FromEnv()
 	var appStore store.Store
 
-	if cfg.DatabaseURL != "" {
+	issuerDBURL := os.Getenv("ISSUER_DATABASE_URL")
+
+	if cfg.DatabaseURL != "" && issuerDBURL != "" {
+		// Split-DB mode: acquirer DB for audit logs, issuer DB for card CRUD
+		pgStore, err := storepostgres.NewAcquirerStore(ctx, cfg.DatabaseURL, issuerDBURL)
+		if err != nil {
+			log.Fatalf("failed to init acquirer store: %v", err)
+		}
+		defer pgStore.Close()
+		appStore = pgStore
+
+		if err := storepostgres.MigrateUp(ctx, pgStore.Pool(), "migrations/acquirer"); err != nil {
+			log.Fatalf("failed to run acquirer migrations: %v", err)
+		}
+		log.Println("acquirer postgres migrations applied")
+	} else if cfg.DatabaseURL != "" {
+		// Single-DB fallback (local dev without split DBs)
 		pgStore, err := storepostgres.New(ctx, cfg.DatabaseURL)
 		if err != nil {
 			log.Fatalf("failed to init postgres store: %v", err)

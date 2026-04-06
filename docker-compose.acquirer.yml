@@ -1,18 +1,46 @@
 # Deploy this file on the ACQUIRER server.
-# Connects to the PostgreSQL and Issuer TCP service running on the issuer server.
+# Acquirer runs its own PostgreSQL for audit logs.
+# Connects to the Issuer's PostgreSQL (ISSUER_POSTGRES_HOST) for card CRUD only.
 #
 # Usage:
 #   cp .env.acquirer.example .env
 #   docker compose -f docker-compose.acquirer.yml up -d
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: acquirer
+      POSTGRES_USER: paymentlab
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=2MB"
+      - "-c"
+      - "wal_buffers=8MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "random_page_cost=1.1"
+
   acquirer:
     image: ${ACQUIRER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-acquirer:latest}
     restart: unless-stopped
     ports:
       - "${ACQUIRER_PORT:-8081}:8081"
     environment:
-      DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/paymentlab?sslmode=disable
+      DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@postgres:5432/acquirer?sslmode=disable
+      ISSUER_DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@${ISSUER_POSTGRES_HOST}:5432/issuer?sslmode=disable
       ISSUER_ADDR: ${ISSUER_ADDR}
       ACQUIRER_PORT: 8081
       ACQUIRER_TCP_POOL: ${ACQUIRER_TCP_POOL:-20}
@@ -25,3 +53,8 @@ services:
       DB_AUDIT_POOL_MIN: ${DB_AUDIT_POOL_MIN:-2}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:
