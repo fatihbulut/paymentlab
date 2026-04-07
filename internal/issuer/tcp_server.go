@@ -31,7 +31,23 @@ func ServeTCP(addr string, svc *Service) error {
 		}
 	}
 
-	log.Printf("issuer: listening on %s (worker pool: %d)", addr, workerPoolSize)
+	workerAcquireTimeoutSec := 2
+	if v := os.Getenv("WORKER_ACQUIRE_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			workerAcquireTimeoutSec = n
+		}
+	}
+	requestTimeoutSec := 3
+	if v := os.Getenv("REQUEST_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			requestTimeoutSec = n
+		}
+	}
+	workerAcquireTimeout := time.Duration(workerAcquireTimeoutSec) * time.Second
+	requestTimeout := time.Duration(requestTimeoutSec) * time.Second
+
+	log.Printf("issuer: listening on %s (workers: %d, acquire_timeout: %s, request_timeout: %s)",
+		addr, workerPoolSize, workerAcquireTimeout, requestTimeout)
 
 	for {
 		conn, err := ln.Accept()
@@ -39,11 +55,11 @@ func ServeTCP(addr string, svc *Service) error {
 			log.Printf("issuer: accept error: %v", err)
 			continue
 		}
-		go handleConn(conn, svc, workerPoolSize)
+		go handleConn(conn, svc, workerPoolSize, workerAcquireTimeout, requestTimeout)
 	}
 }
 
-func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
+func handleConn(conn net.Conn, svc *Service, workerPoolSize int, workerAcquireTimeout, requestTimeout time.Duration) {
 	defer conn.Close()
 	remote := conn.RemoteAddr().String()
 
@@ -68,13 +84,32 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 			return
 		}
 
-		// Acquire worker slot (blocks if pool is full)
+		// Acquire worker slot with timeout (bounded admission)
 		workerWaitStart := time.Now()
-		workerPool <- struct{}{}
+		acquireTimer := time.NewTimer(workerAcquireTimeout)
+		var acquired bool
+		select {
+		case workerPool <- struct{}{}:
+			acquired = true
+		case <-acquireTimer.C:
+			log.Printf("issuer: worker pool saturated, dropping request from %s (waited %dms)",
+				remote, time.Since(workerWaitStart).Milliseconds())
+		case <-ctx.Done():
+			acquireTimer.Stop()
+			return
+		}
+		acquireTimer.Stop()
+		if !acquired {
+			continue
+		}
 		workerWaitMs := time.Since(workerWaitStart).Milliseconds()
 
+		// Per-request context with deadline (prevents wasted work after timeout)
+		reqCtx, reqCancel := context.WithTimeout(ctx, requestTimeout)
+
 		// Process request in goroutine for concurrent handling
-		go func(req string, tpdu []byte, startTime time.Time, wWaitMs int64, reqCtx context.Context) {
+		go func(req string, tpdu []byte, startTime time.Time, wWaitMs int64, reqCtx context.Context, reqCancel context.CancelFunc) {
+			defer reqCancel()
 			defer func() { <-workerPool }() // Release worker slot
 
 			// Check if context is cancelled
@@ -119,7 +154,7 @@ func handleConn(conn net.Conn, svc *Service, workerPoolSize int) {
 				writeMs,
 				time.Since(startTime).Milliseconds(),
 			)
-		}(hexReq, tpduHeader, start, workerWaitMs, ctx)
+		}(hexReq, tpduHeader, start, workerWaitMs, reqCtx, reqCancel)
 	}
 }
 

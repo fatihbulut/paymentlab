@@ -1,6 +1,8 @@
 package acquirer
 
 import (
+	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -57,7 +59,29 @@ func (cl *ConcurrencyLimiter) Middleware() gin.HandlerFunc {
 			c.Next()
 			return
 		default:
-			// All processing slots busy — enter queue
+			// All processing slots busy — apply load shedding before entering queue
+		}
+
+		// Gradual load shedding: probabilistic rejection based on queue pressure
+		currentQueued := atomic.LoadInt64(&cl.queuedCount)
+		if cl.maxQueue > 0 {
+			fillPct := float64(currentQueued) / float64(cl.maxQueue) * 100
+			var rejectPct int
+			if fillPct > 95 {
+				rejectPct = 90
+			} else if fillPct > 90 {
+				rejectPct = 60
+			} else if fillPct > 80 {
+				rejectPct = 20
+			}
+			if rejectPct > 0 && rand.Intn(100) < rejectPct {
+				log.Printf("acquirer: load shedding — queue %.0f%% full, rejecting", fillPct)
+				c.AbortWithStatusJSON(http.StatusTooManyRequests, gin.H{
+					"error":       "server busy — load shedding",
+					"retry_after": 1,
+				})
+				return
+			}
 		}
 
 		// Check queue capacity (atomic increment, rollback if over limit)

@@ -21,6 +21,7 @@ type AcquirerSwitch struct {
 	connectionPool      []net.Conn    // Connection pool for load balancing
 	writeMutexes        []sync.Mutex  // Per-connection write mutexes
 	poolSize            int           // Number of connections in pool
+	switchTimeout       time.Duration // Timeout for issuer response
 	poolMutex           sync.Mutex    // Mutex for pool access
 	currentConnIndex    int           // Round-robin index
 	pendingTransactions sync.Map      // Key: uint32 (corrID), Value: chan []byte
@@ -37,9 +38,16 @@ func NewAcquirerSwitch(issuerAddr string) *AcquirerSwitch {
 			poolSize = n
 		}
 	}
+	switchTimeoutSec := 3
+	if v := os.Getenv("SWITCH_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			switchTimeoutSec = n
+		}
+	}
 	return &AcquirerSwitch{
 		issuerAddr:     issuerAddr,
 		poolSize:       poolSize,
+		switchTimeout:  time.Duration(switchTimeoutSec) * time.Second,
 		connectionPool: make([]net.Conn, poolSize),
 		writeMutexes:   make([]sync.Mutex, poolSize),
 		shutdownChan:   make(chan struct{}),
@@ -106,13 +114,13 @@ func (s *AcquirerSwitch) HandleTerminalRequest(ctx context.Context, rawISO []byt
 	}
 
 	// Wait for response with timeout (use NewTimer to allow early GC via Stop)
-	timer := time.NewTimer(15 * time.Second)
+	timer := time.NewTimer(s.switchTimeout)
 	defer timer.Stop()
 	select {
 	case response := <-responseChan:
 		return response, nil
 	case <-timer.C:
-		return nil, errors.New("transaction timeout after 15 seconds")
+		return nil, fmt.Errorf("transaction timeout after %s", s.switchTimeout)
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
