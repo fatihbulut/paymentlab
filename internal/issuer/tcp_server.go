@@ -49,25 +49,25 @@ func ServeTCP(addr string, svc *Service) error {
 	log.Printf("issuer: listening on %s (workers: %d, acquire_timeout: %s, request_timeout: %s)",
 		addr, workerPoolSize, workerAcquireTimeout, requestTimeout)
 
+	// Shared worker pool across ALL connections (prevents goroutine explosion)
+	workerPool := make(chan struct{}, workerPoolSize)
+
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Printf("issuer: accept error: %v", err)
 			continue
 		}
-		go handleConn(conn, svc, workerPoolSize, workerAcquireTimeout, requestTimeout)
+		go handleConn(conn, svc, workerPool, workerAcquireTimeout, requestTimeout)
 	}
 }
 
-func handleConn(conn net.Conn, svc *Service, workerPoolSize int, workerAcquireTimeout, requestTimeout time.Duration) {
+func handleConn(conn net.Conn, svc *Service, workerPool chan struct{}, workerAcquireTimeout, requestTimeout time.Duration) {
 	defer conn.Close()
 	remote := conn.RemoteAddr().String()
 
 	// Write mutex to prevent concurrent writes to the same TCP connection
 	var writeMu sync.Mutex
-
-	// Worker pool for concurrent request processing
-	workerPool := make(chan struct{}, workerPoolSize)
 
 	// Context for cancellation (prevents goroutine leaks)
 	ctx, cancel := context.WithCancel(context.Background())

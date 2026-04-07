@@ -10,6 +10,10 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     environment:
       POSTGRES_DB: acquirer
       POSTGRES_USER: paymentlab
@@ -38,6 +42,10 @@ services:
   acquirer:
     image: ${ACQUIRER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-acquirer:latest}
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     ports:
       - "${ACQUIRER_PORT:-8081}:8081"
     environment:

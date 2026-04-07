@@ -25,13 +25,28 @@ type HTTPServer struct {
 	switchInstance *AcquirerSwitch
 	appStore       store.Store
 	limiter        *ConcurrencyLimiter
+	auditCh        chan *store.AcquirerTransaction
 }
 
 func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPServer {
-	return &HTTPServer{
+	srv := &HTTPServer{
 		switchInstance: switchInstance,
 		appStore:       appStore,
 		limiter:        NewConcurrencyLimiter(),
+		auditCh:        make(chan *store.AcquirerTransaction, 1000),
+	}
+	for i := 0; i < 3; i++ {
+		go srv.auditWorker()
+	}
+	return srv
+}
+
+func (s *HTTPServer) auditWorker() {
+	if s.appStore == nil {
+		return
+	}
+	for tx := range s.auditCh {
+		_, _ = s.appStore.AcquirerTransactions().CreateAcquirerTransaction(context.Background(), tx)
 	}
 }
 
@@ -409,9 +424,10 @@ func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hex
 		ResponseHex:  hexResp,
 	}
 
-	go func() {
-		_, _ = s.appStore.AcquirerTransactions().CreateAcquirerTransaction(context.Background(), tx)
-	}()
+	select {
+	case s.auditCh <- tx:
+	default:
+	}
 }
 
 func parseAmount12(s string) (int64, error) {

@@ -9,6 +9,10 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     environment:
       POSTGRES_DB: paymentlab
       POSTGRES_USER: paymentlab
@@ -37,6 +41,10 @@ services:
   issuer:
     image: ${ISSUER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-issuer:latest}
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
     ports:
       - "5001:5001"
     environment:

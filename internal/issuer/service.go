@@ -13,8 +13,9 @@ import (
 )
 
 type Service struct {
-	store store.Store
-	auth  *auth.Engine
+	store   store.Store
+	auth    *auth.Engine
+	auditCh chan *store.IssuerTransaction
 }
 
 func NewService(appStore store.Store) *Service {
@@ -22,7 +23,24 @@ func NewService(appStore store.Store) *Service {
 	if appStore != nil {
 		engine = auth.NewEngine(appStore)
 	}
-	return &Service{store: appStore, auth: engine}
+	svc := &Service{
+		store:   appStore,
+		auth:    engine,
+		auditCh: make(chan *store.IssuerTransaction, 1000),
+	}
+	for i := 0; i < 3; i++ {
+		go svc.auditWorker()
+	}
+	return svc
+}
+
+func (s *Service) auditWorker() {
+	if s.store == nil {
+		return
+	}
+	for tx := range s.auditCh {
+		_, _ = s.store.IssuerTransactions().CreateIssuerTransaction(context.Background(), tx)
+	}
 }
 
 // HandleHex processes a single ISO8583 hex request and returns the hex response
@@ -108,9 +126,10 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 			ProcessingTimeMs: durationMs,
 		}
 
-		go func() {
-			_, _ = s.store.IssuerTransactions().CreateIssuerTransaction(context.Background(), tx)
-		}()
+		select {
+		case s.auditCh <- tx:
+		default:
+		}
 	}
 
 	return hexResp, respMsg, nil
