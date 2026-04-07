@@ -74,8 +74,6 @@ func handleConn(conn net.Conn, svc *Service, workerPool chan struct{}, workerAcq
 	defer cancel()
 
 	for {
-		start := time.Now()
-
 		tpduHeader, hexReq, err := readTPDUFrame(conn)
 		if err != nil {
 			if err != io.EOF {
@@ -83,6 +81,8 @@ func handleConn(conn net.Conn, svc *Service, workerPool chan struct{}, workerAcq
 			}
 			return
 		}
+
+		start := time.Now()
 
 		// Acquire worker slot with timeout (bounded admission)
 		workerWaitStart := time.Now()
