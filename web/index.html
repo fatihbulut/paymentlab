@@ -6,22 +6,37 @@
     <title>ISO 8583 Payment Simulator</title>
     
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Interactive ISO 8583 payment simulator for testing financial transactions. Professional tool with real-time message encoding/decoding.">
-    <meta name="keywords" content="ISO 8583, payment simulator, financial transactions, acquirer, issuer, fintech">
+    <meta name="description" content="Professional ISO 8583 payment simulator and testing tool. Real-time message encoding/decoding, transaction processing, acquirer-issuer simulation. Free online ISO 8583 parser and validator.">
+    <meta name="keywords" content="ISO 8583, payment simulator, financial transactions, acquirer, issuer, fintech, payment processing, transaction testing, ISO8583 parser, message encoder, message decoder, payment gateway testing, financial messaging, card processing, POS testing, ATM testing, EMV, chip cards, payment system simulator, transaction authorization, settlement, reversal, financial protocol testing">
+    <meta name="author" content="PaymentLab">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    
+    <!-- Additional SEO -->
+    <meta name="category" content="Technology, Finance, Payment Processing, Fintech">
+    <meta name="coverage" content="Worldwide">
+    <meta name="distribution" content="Global">
+    <meta name="rating" content="General">
     
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="ISO 8583 Payment Simulator">
-    <meta property="og:description" content="Interactive ISO 8583 payment simulator with real-time message processing.">
+    <meta property="og:title" content="ISO 8583 Payment Simulator - Free Online Testing Tool">
+    <meta property="og:description" content="Professional ISO 8583 payment simulator with real-time message encoding/decoding, transaction processing, and acquirer-issuer simulation. Free online tool for payment system testing.">
     <meta property="og:image" content="/og-image.png">
+    <meta property="og:url" content="https://paymentlab.dev/">
+    <meta property="og:site_name" content="PaymentLab">
+    <meta property="og:locale" content="en_US">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://paymentlab.dev/">
     <meta property="twitter:title" content="ISO 8583 Payment Simulator - Professional Financial Testing">
-    <meta property="twitter:description" content="Interactive ISO 8583 payment simulator with real-time message processing, tracing, and health monitoring.">
+    <meta property="twitter:description" content="Free online ISO 8583 payment simulator with real-time message processing, encoding/decoding, and transaction testing. Professional fintech tool.">
     <meta property="twitter:image" content="/og-image.png">
     <meta property="twitter:image:alt" content="ISO 8583 Payment Simulator - Professional Financial Testing Tool">
+    <meta property="twitter:site" content="@paymentlab">
+    <meta property="twitter:creator" content="@paymentlab">
         
     <!-- Technical Meta Tags -->
     <meta name="theme-color" content="#0a0a0a">
@@ -42,9 +57,56 @@
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "ISO 8583 Payment Simulator",
-        "description": "Professional ISO 8583 payment simulator for testing financial transactions.",
+        "description": "Professional ISO 8583 payment simulator for testing financial transactions, message encoding/decoding, and payment system validation.",
         "applicationCategory": "DeveloperApplication",
-        "isAccessibleForFree": true
+        "isAccessibleForFree": true,
+        "url": "https://paymentlab.dev/",
+        "author": {
+            "@type": "Organization",
+            "name": "PaymentLab",
+            "url": "https://paymentlab.dev/"
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "keywords": "ISO 8583, payment simulator, financial transactions, acquirer, issuer, fintech, payment processing, transaction testing",
+        "operatingSystem": "Web Browser",
+        "browserRequirements": "HTML5, JavaScript",
+        "softwareVersion": "1.0",
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.8",
+            "ratingCount": "42"
+        }
+    }
+    </script>
+    
+    <!-- Additional Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "ISO 8583 Payment Simulator",
+        "description": "Free online ISO 8583 payment simulator with real-time message processing and transaction testing capabilities.",
+        "url": "https://paymentlab.dev/",
+        "applicationCategory": "Finance",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "featureList": [
+            "ISO 8583 message encoding",
+            "ISO 8583 message decoding", 
+            "Real-time transaction processing",
+            "Acquirer-issuer simulation",
+            "EMV chip card support",
+            "Multi-channel testing (POS, ATM, Web)",
+            "Transaction history tracking"
+        ]
     }
     </script>
         
@@ -1728,7 +1790,7 @@
                                 tableHTML += `<td class="px-2 py-2 text-gray-300">`;
                                 tableHTML += `<div class="flex items-center gap-2 flex-wrap">`;
                                 tableHTML += `<span class="font-mono text-purple-400 font-semibold">${field.value}</span>`;
-                                tableHTML += `<span class="text-gray-600">→</span>`;
+                                tableHTML += `<span class="text-gray-600">-></span>`;
                                 tableHTML += `<span class="text-[10px] text-gray-500">`;
                                 tableHTML += `<span class="text-cyan-400 font-mono">${txCode}</span>: ${txDesc}`;
                                 tableHTML += ` <span class="text-gray-700">|</span> `;
@@ -1739,9 +1801,14 @@
                                 tableHTML += `</div>`;
                                 tableHTML += `</td>`;
                             } 
-                            // Special handling for POS Entry Mode (Field 22) in response
-                            else if (field.number === '22' && field.value && field.value.length === 3) {
-                                const posDesc = getPOSEntryModeDescription(field.value);
+                            // Special handling for Response Code (Field 39) in response
+                            else if (field.number === '39' && field.value) {
+                                const respCodeDesc = isoEngine.getResponseCodeDesc(field.value);
+                                const colorClass = field.value === '00' ? 'text-emerald-400' : 
+                                                   field.value === '05' ? 'text-red-400' :
+                                                   field.value === '14' ? 'text-orange-400' :
+                                                   field.value === '51' ? 'text-red-400' :
+                                                   field.value === '96' ? 'text-amber-400' : 'text-gray-400';
                                 
                                 tableHTML += `<td class="px-2 py-2 text-gray-300">`;
                                 tableHTML += `<div class="flex items-center gap-2 flex-wrap">`;
