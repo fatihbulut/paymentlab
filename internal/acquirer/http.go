@@ -24,7 +24,7 @@ import (
 type HTTPServer struct {
 	switchInstance *AcquirerSwitch
 	appStore       store.Store
-	limiter        *ConcurrencyLimiter
+	limiter        *AdaptiveLimiter
 	auditCh        chan *store.AcquirerTransaction
 }
 
@@ -32,7 +32,7 @@ func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPSe
 	srv := &HTTPServer{
 		switchInstance: switchInstance,
 		appStore:       appStore,
-		limiter:        NewConcurrencyLimiter(),
+		limiter:        NewAdaptiveLimiter(),
 		auditCh:        make(chan *store.AcquirerTransaction, 1000),
 	}
 	for i := 0; i < 3; i++ {
@@ -82,6 +82,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 			"status":         "ok",
 			"active":         s.limiter.Active(),
 			"queued":         s.limiter.Queued(),
+			"limit":          s.limiter.Limit(),
 			"max_concurrent": s.limiter.MaxConcurrent(),
 			"max_queue":      s.limiter.MaxQueue(),
 		})
@@ -234,7 +235,9 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	switchStart := time.Now()
 	response, err := s.switchInstance.HandleTerminalRequest(ctx, rawISOBytes)
 	switchDone := time.Now()
+	switchRTTMs := float64(switchDone.Sub(switchStart).Milliseconds())
 	if err != nil {
+		s.limiter.RecordTimeout()
 		// Async audit log for error case
 		s.asyncLogAcquirerTx(&req, &hexReq, nil, store.TransactionStatus("ERROR"))
 		span.SetAttributes(
@@ -244,6 +247,8 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": fmt.Sprintf("switch communication error: %v", err)})
 		return
 	}
+
+	s.limiter.RecordRTT(switchRTTMs)
 
 	// Convert response bytes back to hex string
 	hexResp := fmt.Sprintf("%x", response)
