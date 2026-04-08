@@ -49,6 +49,7 @@ type AdaptiveLimiter struct {
 
 	// Anti-oscillation state
 	healthyStreak int
+	inProbePhase  bool // true on startup; exponential increase until first congestion
 	probeCount    int
 }
 
@@ -56,7 +57,7 @@ type AdaptiveLimiter struct {
 func NewAdaptiveLimiter() *AdaptiveLimiter {
 	minLimit := envInt("MIN_CONCURRENT", 5)
 	maxLimit := envInt("MAX_CONCURRENT", 100)
-	initial := envInt("INITIAL_CONCURRENT", 10)
+	initial := envInt("INITIAL_CONCURRENT", 5)
 	maxQueue := envInt("MAX_QUEUE", 200)
 	queueTimeoutSec := envInt("QUEUE_TIMEOUT_SEC", 5)
 	sampleSize := envInt("LIMITER_SAMPLE_SIZE", 50)
@@ -70,6 +71,7 @@ func NewAdaptiveLimiter() *AdaptiveLimiter {
 		queueTimeout:    time.Duration(queueTimeoutSec) * time.Second,
 		sampleSize:      sampleSize,
 		healthThreshold: healthThreshold,
+		inProbePhase:    true,
 	}
 	atomic.StoreInt64(&al.limit, int64(initial))
 
@@ -194,6 +196,11 @@ func (al *AdaptiveLimiter) adjustLimit() {
 		failRateDelta > failDeltaThreshold
 
 	if degraded {
+		if al.inProbePhase {
+			log.Printf("acquirer: probe→stable at limit=%d (rtt=%.1fx fail=%.1f%%)",
+				current, rttRatio, al.failRateEWMA*100)
+			al.inProbePhase = false
+		}
 		// Multiplicative Decrease: fast reaction
 		newLimit := int64(float64(current) * 0.75)
 		if newLimit < int64(al.minLimit) {
@@ -206,14 +213,27 @@ func (al *AdaptiveLimiter) adjustLimit() {
 		return
 	}
 
-	// --- Recovery: require sustained health before increasing ---
+	// --- Recovery ---
+	if al.inProbePhase {
+		// Probe phase: exponential increase to find capacity ceiling fast.
+		// Doubles every window until first congestion signal or max ceiling.
+		newLimit := current * 2
+		if newLimit > int64(al.maxLimit) {
+			newLimit = int64(al.maxLimit)
+			al.inProbePhase = false // hit ceiling, transition to AIMD
+		}
+		atomic.StoreInt64(&al.limit, newLimit)
+		log.Printf("acquirer: probe ↑ limit=%d→%d (exponential)", current, newLimit)
+		return
+	}
+
+	// Congestion avoidance: AI with hysteresis (require sustained health)
 	al.healthyStreak++
 	if al.healthyStreak < al.healthThreshold {
 		return // wait for more consecutive healthy windows
 	}
 	al.healthyStreak = 0
 
-	// Additive Increase: slow, conservative recovery
 	newLimit := current + 1
 	if newLimit > int64(al.maxLimit) {
 		newLimit = int64(al.maxLimit)
