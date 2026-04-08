@@ -7,7 +7,6 @@ import (
 	"github.com/moov-io/iso8583"
 )
 
-
 func ParseHexToMessage(hexStr string) (*ISOMessage, error) {
 	if len(hexStr) == 0 {
 		return nil, fmt.Errorf("empty hex string")

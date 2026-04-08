@@ -9,50 +9,50 @@ type TransactionType string
 
 const (
 	// Purchase transactions
-	TxPurchase              TransactionType = "PURCHASE"               // Goods/Services Purchase
-	TxPurchaseCashback      TransactionType = "PURCHASE_CASHBACK"      // Purchase with Cashback
-	TxPurchaseReturn        TransactionType = "PURCHASE_RETURN"        // Purchase Return/Refund
-	
+	TxPurchase         TransactionType = "PURCHASE"          // Goods/Services Purchase
+	TxPurchaseCashback TransactionType = "PURCHASE_CASHBACK" // Purchase with Cashback
+	TxPurchaseReturn   TransactionType = "PURCHASE_RETURN"   // Purchase Return/Refund
+
 	// Cash transactions
-	TxCashWithdrawal        TransactionType = "CASH_WITHDRAWAL"        // ATM/POS Cash Withdrawal
-	TxCashAdvance           TransactionType = "CASH_ADVANCE"           // Cash Advance
-	TxCashDeposit           TransactionType = "CASH_DEPOSIT"           // Cash Deposit
-	
+	TxCashWithdrawal TransactionType = "CASH_WITHDRAWAL" // ATM/POS Cash Withdrawal
+	TxCashAdvance    TransactionType = "CASH_ADVANCE"    // Cash Advance
+	TxCashDeposit    TransactionType = "CASH_DEPOSIT"    // Cash Deposit
+
 	// Balance inquiries
-	TxBalanceInquiry        TransactionType = "BALANCE_INQUIRY"        // Balance Inquiry
-	TxMiniStatement         TransactionType = "MINI_STATEMENT"         // Mini Statement
-	
+	TxBalanceInquiry TransactionType = "BALANCE_INQUIRY" // Balance Inquiry
+	TxMiniStatement  TransactionType = "MINI_STATEMENT"  // Mini Statement
+
 	// Payment transactions
-	TxPayment               TransactionType = "PAYMENT"                // Bill Payment
-	TxTransfer              TransactionType = "TRANSFER"               // Fund Transfer
-	TxOriginalCredit        TransactionType = "ORIGINAL_CREDIT"        // Original Credit Transfer (OCT)
-	
+	TxPayment        TransactionType = "PAYMENT"         // Bill Payment
+	TxTransfer       TransactionType = "TRANSFER"        // Fund Transfer
+	TxOriginalCredit TransactionType = "ORIGINAL_CREDIT" // Original Credit Transfer (OCT)
+
 	// Reversal and adjustment
-	TxReversal              TransactionType = "REVERSAL"               // Transaction Reversal
-	TxAdjustment            TransactionType = "ADJUSTMENT"             // Transaction Adjustment
-	
+	TxReversal   TransactionType = "REVERSAL"   // Transaction Reversal
+	TxAdjustment TransactionType = "ADJUSTMENT" // Transaction Adjustment
+
 	// Preauthorization
-	TxPreAuth               TransactionType = "PREAUTH"                // Preauthorization
-	TxPreAuthCompletion     TransactionType = "PREAUTH_COMPLETION"     // Preauth Completion
-	
+	TxPreAuth           TransactionType = "PREAUTH"            // Preauthorization
+	TxPreAuthCompletion TransactionType = "PREAUTH_COMPLETION" // Preauth Completion
+
 	// Refund
-	TxRefund                TransactionType = "REFUND"                 // Merchandise Refund
-	
+	TxRefund TransactionType = "REFUND" // Merchandise Refund
+
 	// Card verification
-	TxCardVerification      TransactionType = "CARD_VERIFICATION"      // Card Verification (CVV check)
-	TxAccountVerification   TransactionType = "ACCOUNT_VERIFICATION"   // Account Verification
+	TxCardVerification    TransactionType = "CARD_VERIFICATION"    // Card Verification (CVV check)
+	TxAccountVerification TransactionType = "ACCOUNT_VERIFICATION" // Account Verification
 )
 
 // AccountType represents the account being accessed
 type AccountType string
 
 const (
-	AccDefault         AccountType = "00" // Default - Unspecified
-	AccSavings         AccountType = "10" // Savings Account
-	AccChecking        AccountType = "20" // Checking Account
-	AccCredit          AccountType = "30" // Credit Account
-	AccUniversal       AccountType = "40" // Universal Account
-	AccInvestment      AccountType = "50" // Investment Account
+	AccDefault    AccountType = "00" // Default - Unspecified
+	AccSavings    AccountType = "10" // Savings Account
+	AccChecking   AccountType = "20" // Checking Account
+	AccCredit     AccountType = "30" // Credit Account
+	AccUniversal  AccountType = "40" // Universal Account
+	AccInvestment AccountType = "50" // Investment Account
 )
 
 // ProcessingCode represents the 6-digit ISO 8583 Field 3
@@ -75,8 +75,8 @@ func (pc ProcessingCode) String() string {
 type ProcessingCodeSpec struct {
 	Code        string
 	Description string
-	Mastercard  bool // Supported by Mastercard
-	Visa        bool // Supported by Visa
+	Mastercard  bool   // Supported by Mastercard
+	Visa        bool   // Supported by Visa
 	MTI         string // Typical MTI used
 }
 
@@ -101,7 +101,7 @@ func GetProcessingCode(txType TransactionType, fromAcc, toAcc AccountType) strin
 		txCode = "09" // Purchase with Cashback
 	case TxPurchaseReturn:
 		txCode = "20" // Refund/Return
-		
+
 	// Cash transactions (01xxxx)
 	case TxCashWithdrawal:
 		txCode = "01" // Cash Withdrawal
@@ -109,13 +109,13 @@ func GetProcessingCode(txType TransactionType, fromAcc, toAcc AccountType) strin
 		txCode = "01" // Cash Advance (same as withdrawal)
 	case TxCashDeposit:
 		txCode = "21" // Cash Deposit
-		
+
 	// Balance inquiry (31xxxx)
 	case TxBalanceInquiry:
 		txCode = "31" // Balance Inquiry
 	case TxMiniStatement:
 		txCode = "38" // Mini Statement
-		
+
 	// Payment and transfer (40xxxx, 26xxxx)
 	case TxPayment:
 		txCode = "40" // Payment
@@ -123,31 +123,31 @@ func GetProcessingCode(txType TransactionType, fromAcc, toAcc AccountType) strin
 		txCode = "40" // Fund Transfer
 	case TxOriginalCredit:
 		txCode = "26" // Original Credit Transfer (OCT)
-		
+
 	// Reversal (02xxxx for purchase reversal, 22xxxx for cash reversal)
 	case TxReversal:
 		txCode = "02" // Reversal (typically used with MTI 0400/0420)
-		
+
 	// Adjustment
 	case TxAdjustment:
 		txCode = "02" // Adjustment
-		
+
 	// Preauthorization (00xxxx with specific handling)
 	case TxPreAuth:
 		txCode = "00" // Preauth uses same as purchase
 	case TxPreAuthCompletion:
 		txCode = "00" // Completion uses same as purchase
-		
+
 	// Refund (20xxxx)
 	case TxRefund:
 		txCode = "20" // Merchandise Refund
-		
+
 	// Card/Account verification (00xxxx with zero amount)
 	case TxCardVerification:
 		txCode = "00" // Card Verification
 	case TxAccountVerification:
 		txCode = "93" // Account Verification
-		
+
 	default:
 		txCode = "00" // Default to purchase
 	}
@@ -217,13 +217,13 @@ func ValidateProcessingCode(code string) error {
 	if len(code) != 6 {
 		return fmt.Errorf("processing code must be 6 digits, got %d", len(code))
 	}
-	
+
 	for _, c := range code {
 		if c < '0' || c > '9' {
 			return fmt.Errorf("processing code must contain only digits")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -232,7 +232,7 @@ func ParseProcessingCode(code string) (*ProcessingCode, error) {
 	if err := ValidateProcessingCode(code); err != nil {
 		return nil, err
 	}
-	
+
 	return &ProcessingCode{
 		TransactionType: code[0:2],
 		FromAccount:     code[2:4],
@@ -262,7 +262,7 @@ func GetTransactionDescription(txType TransactionType) string {
 		TxCardVerification:    "Card Verification",
 		TxAccountVerification: "Account Verification",
 	}
-	
+
 	if desc, ok := descriptions[txType]; ok {
 		return desc
 	}

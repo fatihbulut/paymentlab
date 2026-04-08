@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -85,6 +86,7 @@ func (s *HTTPServer) Router() *gin.Engine {
 			"limit":          s.limiter.Limit(),
 			"max_concurrent": s.limiter.MaxConcurrent(),
 			"max_queue":      s.limiter.MaxQueue(),
+			"rejected_total": s.limiter.RejectedTotal(),
 		})
 	})
 
@@ -93,11 +95,28 @@ func (s *HTTPServer) Router() *gin.Engine {
 	router.PUT("/v1/cards/:id", s.handleUpdateCard)
 	router.DELETE("/v1/cards/:id", s.handleDeleteCard)
 	router.POST("/v1/cards/:id/topup", s.handleTopUpCard)
-	router.POST("/v1/transaction", s.limiter.Middleware(), s.handleTransaction)
+	router.POST("/v1/transaction", s.requestTimeoutMiddleware(), s.limiter.Middleware(), s.handleTransaction)
 	router.GET("/v1/transactions", s.handleListTransactions)
 	router.GET("/v1/issuer-transactions", s.handleListIssuerTransactions)
 
 	return router
+}
+
+func (s *HTTPServer) requestTimeoutMiddleware() gin.HandlerFunc {
+	timeoutSec := 2
+	if v := os.Getenv("ACQUIRER_REQUEST_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			timeoutSec = n
+		}
+	}
+	d := time.Duration(timeoutSec) * time.Second
+
+	return func(c *gin.Context) {
+		ctx, cancel := context.WithTimeout(c.Request.Context(), d)
+		defer cancel()
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
 }
 
 func (s *HTTPServer) handleCreateCard(c *gin.Context) {

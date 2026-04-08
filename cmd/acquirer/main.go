@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"iso-parser-service/internal/acquirer"
@@ -101,10 +102,18 @@ func main() {
 	}
 
 	// Custom HTTP server with proper timeouts
+	requestTimeoutSec := 2
+	if v := os.Getenv("ACQUIRER_REQUEST_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			requestTimeoutSec = n
+		}
+	}
+
 	httpServer := &http.Server{
 		Handler:           server.Router(),
 		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      time.Duration(requestTimeoutSec+1) * time.Second,
 		IdleTimeout:       120 * time.Second,
 	}
 

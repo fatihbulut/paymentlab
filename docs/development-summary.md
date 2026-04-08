@@ -12,7 +12,6 @@ ISO 8583 Payment Simulator, finansal işlem testleri için geliştirilen bir mik
 **What:** Mikro servis mimarisi oluşturma
 - `cmd/acquirer` - HTTP API Gateway
 - `cmd/issuer` - TCP Backend Service
-- `cmd/parser` - Debug/Development Tool
 - `internal/iso` - ISO8583 domain logic
 
 **Why:** Gerçek payment sistemlerinin mimarisini yansıtmak için

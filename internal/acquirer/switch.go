@@ -38,16 +38,22 @@ func NewAcquirerSwitch(issuerAddr string) *AcquirerSwitch {
 			poolSize = n
 		}
 	}
-	switchTimeoutSec := 3
-	if v := os.Getenv("SWITCH_TIMEOUT_SEC"); v != "" {
+	// Switch timeout should be slightly below HTTP request timeout to avoid
+	// doing work after the caller has given up.
+	switchTimeoutMS := 1600
+	if v := os.Getenv("SWITCH_TIMEOUT_MS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			switchTimeoutSec = n
+			switchTimeoutMS = n
+		}
+	} else if v := os.Getenv("SWITCH_TIMEOUT_SEC"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			switchTimeoutMS = n * 1000
 		}
 	}
 	return &AcquirerSwitch{
 		issuerAddr:     issuerAddr,
 		poolSize:       poolSize,
-		switchTimeout:  time.Duration(switchTimeoutSec) * time.Second,
+		switchTimeout:  time.Duration(switchTimeoutMS) * time.Millisecond,
 		connectionPool: make([]net.Conn, poolSize),
 		writeMutexes:   make([]sync.Mutex, poolSize),
 		shutdownChan:   make(chan struct{}),
