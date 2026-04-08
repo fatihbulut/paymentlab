@@ -26,40 +26,55 @@ type AdaptiveLimiter struct {
 
 	notify chan struct{} // signals slot availability to waiting goroutines
 
-	minLimit     int
-	maxLimit     int
-	maxQueue     int
-	queueTimeout time.Duration
+	minLimit        int
+	maxLimit        int
+	maxQueue        int
+	queueTimeout    time.Duration
+	sampleSize      int // samples per adjustment window
+	healthThreshold int // consecutive healthy windows required to increase
 
-	// Vegas RTT controller
-	mu         sync.Mutex
-	rttEWMA    float64 // exponentially weighted moving average
-	minRTT     float64 // baseline (no-congestion) RTT in ms
-	probeCount int
-	sampleSize int // adjust limit every N completions
+	// AIMD multi-signal controller
+	mu sync.Mutex
+
+	// RTT signal (EWMA + decaying baseline)
+	rttEWMA   float64
+	minRTT    float64
+	minRTTAge int // samples since minRTT last updated; triggers recalibration
+
+	// Failure rate signal (EWMA + derivative)
+	totalInWindow  int
+	failedInWindow int
+	failRateEWMA   float64
+	prevFailRate   float64
+
+	// Anti-oscillation state
+	healthyStreak int
+	probeCount    int
 }
 
-// NewAdaptiveLimiter creates a Vegas-style adaptive limiter from environment variables.
+// NewAdaptiveLimiter creates an AIMD multi-signal adaptive limiter from environment variables.
 func NewAdaptiveLimiter() *AdaptiveLimiter {
 	minLimit := envInt("MIN_CONCURRENT", 5)
 	maxLimit := envInt("MAX_CONCURRENT", 100)
 	initial := envInt("INITIAL_CONCURRENT", 10)
 	maxQueue := envInt("MAX_QUEUE", 200)
 	queueTimeoutSec := envInt("QUEUE_TIMEOUT_SEC", 5)
-	sampleSize := envInt("LIMITER_SAMPLE_SIZE", 20)
+	sampleSize := envInt("LIMITER_SAMPLE_SIZE", 50)
+	healthThreshold := envInt("LIMITER_HEALTH_THRESHOLD", 3)
 
 	al := &AdaptiveLimiter{
-		notify:       make(chan struct{}, maxLimit),
-		minLimit:     minLimit,
-		maxLimit:     maxLimit,
-		maxQueue:     maxQueue,
-		queueTimeout: time.Duration(queueTimeoutSec) * time.Second,
-		sampleSize:   sampleSize,
+		notify:          make(chan struct{}, maxLimit),
+		minLimit:        minLimit,
+		maxLimit:        maxLimit,
+		maxQueue:        maxQueue,
+		queueTimeout:    time.Duration(queueTimeoutSec) * time.Second,
+		sampleSize:      sampleSize,
+		healthThreshold: healthThreshold,
 	}
 	atomic.StoreInt64(&al.limit, int64(initial))
 
-	log.Printf("acquirer: adaptive limiter min=%d initial=%d max=%d queue=%d sample=%d",
-		minLimit, initial, maxLimit, maxQueue, sampleSize)
+	log.Printf("acquirer: adaptive limiter min=%d initial=%d max=%d queue=%d sample=%d health=%d",
+		minLimit, initial, maxLimit, maxQueue, sampleSize, healthThreshold)
 
 	return al
 }
@@ -86,8 +101,8 @@ func (al *AdaptiveLimiter) release() {
 	}
 }
 
-// RecordRTT feeds an observed round-trip time (ms) into the Vegas controller.
-// Called by handleTransaction after each successful switch call.
+// RecordRTT records a successful downstream call duration.
+// Feeds RTT into EWMA and triggers periodic AIMD adjustment.
 func (al *AdaptiveLimiter) RecordRTT(rttMs float64) {
 	al.mu.Lock()
 	defer al.mu.Unlock()
@@ -97,75 +112,115 @@ func (al *AdaptiveLimiter) RecordRTT(rttMs float64) {
 		al.minRTT = rttMs
 	} else {
 		al.rttEWMA = 0.2*rttMs + 0.8*al.rttEWMA
+
+		// Decay minRTT to prevent stale non-stationary baseline.
+		// After 300 samples without a new minimum, recalibrate to 90% of current EWMA.
+		al.minRTTAge++
+		if al.minRTTAge > 300 {
+			al.minRTT = al.rttEWMA * 0.9
+			al.minRTTAge = 0
+		}
 		if rttMs < al.minRTT {
 			al.minRTT = rttMs
+			al.minRTTAge = 0
 		}
 	}
 
+	al.totalInWindow++
 	al.probeCount++
-	if al.probeCount < al.sampleSize {
-		return
+	if al.probeCount >= al.sampleSize {
+		al.probeCount = 0
+		al.adjustLimit()
 	}
-	al.probeCount = 0
-	al.adjustLimit()
 }
 
-// RecordTimeout signals extreme congestion — halve the limit immediately.
+// RecordTimeout records a downstream timeout/error.
+// Counted in the failure window; triggers adjustment at next sample boundary.
 func (al *AdaptiveLimiter) RecordTimeout() {
 	al.mu.Lock()
 	defer al.mu.Unlock()
 
-	current := atomic.LoadInt64(&al.limit)
-	newLimit := int64(float64(current) * 0.5)
-	if newLimit < int64(al.minLimit) {
-		newLimit = int64(al.minLimit)
+	al.failedInWindow++
+	al.totalInWindow++
+	al.probeCount++
+	if al.probeCount >= al.sampleSize {
+		al.probeCount = 0
+		al.adjustLimit()
 	}
-	atomic.StoreInt64(&al.limit, newLimit)
-	al.probeCount = 0
-
-	log.Printf("acquirer: adaptive TIMEOUT limit=%d→%d", current, newLimit)
 }
 
-// adjustLimit implements the Vegas algorithm. Must be called under al.mu.
+// adjustLimit implements AIMD congestion control with multi-signal feedback.
+// Must be called under al.mu.
 //
-// Vegas estimates a "virtual queue" from RTT inflation:
+// Degradation signals (any triggers Multiplicative Decrease):
+//  1. RTT ratio   — rttEWMA / minRTT > 1.5 (latency inflated >50% above baseline)
+//  2. Failure rate — EWMA of window failure fraction > 5%
+//  3. Failure rate derivative — rising failure rate (>2% worsening per window)
 //
-//	expected_throughput = limit / minRTT
-//	actual_throughput   = limit / rttEWMA
-//	queue_estimate      = limit × (1 − minRTT/rttEWMA)
+// Recovery (Additive Increase):
 //
-// If queue_estimate < alpha → room to grow → increase limit
-// If queue_estimate > beta  → congested    → decrease limit
+//	Requires healthThreshold consecutive healthy windows (anti-oscillation hysteresis).
 func (al *AdaptiveLimiter) adjustLimit() {
-	if al.minRTT <= 0 || al.rttEWMA <= 0 {
+	current := atomic.LoadInt64(&al.limit)
+
+	// --- Signal 1: RTT ratio ---
+	rttRatio := 1.0
+	if al.minRTT > 0 && al.rttEWMA > 0 {
+		rttRatio = al.rttEWMA / al.minRTT
+	}
+
+	// --- Signal 2: Failure rate + derivative ---
+	failRate := 0.0
+	if al.totalInWindow > 0 {
+		failRate = float64(al.failedInWindow) / float64(al.totalInWindow)
+	}
+	al.prevFailRate = al.failRateEWMA
+	al.failRateEWMA = 0.3*failRate + 0.7*al.failRateEWMA
+	failRateDelta := al.failRateEWMA - al.prevFailRate
+
+	// Reset window for next period
+	al.totalInWindow = 0
+	al.failedInWindow = 0
+
+	// --- Degradation detection (multi-signal OR) ---
+	const (
+		rttThreshold       = 1.5  // RTT inflated >50% above decaying baseline
+		failRateThreshold  = 0.05 // >5% failure rate (EWMA)
+		failDeltaThreshold = 0.02 // error rate rising >2% absolute per window
+	)
+
+	degraded := rttRatio > rttThreshold ||
+		al.failRateEWMA > failRateThreshold ||
+		failRateDelta > failDeltaThreshold
+
+	if degraded {
+		// Multiplicative Decrease: fast reaction
+		newLimit := int64(float64(current) * 0.75)
+		if newLimit < int64(al.minLimit) {
+			newLimit = int64(al.minLimit)
+		}
+		atomic.StoreInt64(&al.limit, newLimit)
+		al.healthyStreak = 0
+		log.Printf("acquirer: adaptive ↓ limit=%d→%d rtt=%.1fx fail=%.1f%% Δfail=%.1f%%",
+			current, newLimit, rttRatio, al.failRateEWMA*100, failRateDelta*100)
 		return
 	}
 
-	current := atomic.LoadInt64(&al.limit)
-	queueEstimate := float64(current) * (1.0 - al.minRTT/al.rttEWMA)
-
-	var newLimit int64
-	const alpha = 3.0 // below alpha: room to grow
-	const beta = 6.0  // above beta: congested
-
-	if queueEstimate < alpha {
-		newLimit = current + 1 // additive increase
-	} else if queueEstimate > beta {
-		newLimit = current - 1 // additive decrease
-	} else {
-		newLimit = current // stable zone — hold
+	// --- Recovery: require sustained health before increasing ---
+	al.healthyStreak++
+	if al.healthyStreak < al.healthThreshold {
+		return // wait for more consecutive healthy windows
 	}
+	al.healthyStreak = 0
 
-	if newLimit < int64(al.minLimit) {
-		newLimit = int64(al.minLimit)
-	}
+	// Additive Increase: slow, conservative recovery
+	newLimit := current + 1
 	if newLimit > int64(al.maxLimit) {
 		newLimit = int64(al.maxLimit)
 	}
 	atomic.StoreInt64(&al.limit, newLimit)
-
-	log.Printf("acquirer: adaptive limit=%d q_est=%.1f rtt=%.0fms min_rtt=%.0fms inflight=%d",
-		newLimit, queueEstimate, al.rttEWMA, al.minRTT, atomic.LoadInt64(&al.inflight))
+	log.Printf("acquirer: adaptive ↑ limit=%d→%d rtt=%.1fx fail=%.1f%%",
+		current, newLimit, rttRatio, al.failRateEWMA*100)
 }
 
 // Middleware returns a Gin middleware with adaptive concurrency control.
