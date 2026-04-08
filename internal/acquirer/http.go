@@ -90,6 +90,38 @@ func (s *HTTPServer) Router() *gin.Engine {
 		})
 	})
 
+	// Kubernetes-style health endpoint alias.
+	router.GET("/healthz", func(c *gin.Context) {
+		c.Redirect(http.StatusTemporaryRedirect, "/health")
+	})
+
+	// Minimal Prometheus-style metrics endpoint for quick debugging.
+	// Primary metrics export path is OTLP via OpenTelemetry (see internal/otel).
+	router.GET("/metrics", func(c *gin.Context) {
+		var ms runtime.MemStats
+		runtime.ReadMemStats(&ms)
+
+		c.Header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+		c.String(http.StatusOK, strings.Join([]string{
+			"# HELP acquirer_in_flight_requests Current in-flight transaction requests.",
+			"# TYPE acquirer_in_flight_requests gauge",
+			fmt.Sprintf("acquirer_in_flight_requests %d", s.limiter.Active()),
+			"# HELP acquirer_queued_requests Current queued transaction requests (waiting for slot).",
+			"# TYPE acquirer_queued_requests gauge",
+			fmt.Sprintf("acquirer_queued_requests %d", s.limiter.Queued()),
+			"# HELP acquirer_rejected_total Total rejected transaction requests due to overload.",
+			"# TYPE acquirer_rejected_total counter",
+			fmt.Sprintf("acquirer_rejected_total %d", s.limiter.RejectedTotal()),
+			"# HELP process_goroutines Number of goroutines.",
+			"# TYPE process_goroutines gauge",
+			fmt.Sprintf("process_goroutines %d", runtime.NumGoroutine()),
+			"# HELP process_resident_memory_bytes Approx memory in bytes (Go runtime Sys).",
+			"# TYPE process_resident_memory_bytes gauge",
+			fmt.Sprintf("process_resident_memory_bytes %d", ms.Sys),
+			"",
+		}, "\n"))
+	})
+
 	router.POST("/v1/cards", s.handleCreateCard)
 	router.GET("/v1/cards", s.handleListCards)
 	router.PUT("/v1/cards/:id", s.handleUpdateCard)
