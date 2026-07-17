@@ -236,13 +236,26 @@ func (s *HTTPServer) handleDeleteCard(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"deleted": true})
 }
 
+// handleTransaction: Ana transaction işleme endpoint'i
+//
+// AKIŞ:
+// 1. JSON → ISO8583 message parse
+// 2. ISO message → hex pack (binary format)
+// 3. Hex → raw bytes decode
+// 4. Switch'e gönder (TPDU wrapper ile)
+// 5. Response bekle (timeout ile)
+// 6. Response → hex → ISO message parse
+// 7. Async audit log (non-blocking)
+// 8. Timing metrics log
+//
+// ÖNEMLİ: Tüm adımlar timing'lenmiş (pack, switch_rtt, parse, total)
 func (s *HTTPServer) handleTransaction(c *gin.Context) {
-	// Start root trace for HTTP request
+	// OpenTelemetry tracing başlat (distributed tracing için)
 	tracer := otel.Tracer("acquirer-tracer")
 	ctx, span := tracer.Start(c.Request.Context(), "transaction-processing")
 	defer span.End()
 
-	start := time.Now()
+	start := time.Now() // Toplam süre için
 	var req iso.ISOMessage
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -254,8 +267,10 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		return
 	}
 
+	// ISO message → hex string (binary format)
+	// Örn: {MTI:"0200", PAN:"4111..."} → "0200..."
 	hexReq, err := iso.PackMessageToHex(&req)
-	packDone := time.Now()
+	packDone := time.Now() // Pack süresi için
 	if err != nil {
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
@@ -271,7 +286,8 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		attribute.String("transaction.pan_masked", maskPAN(req.PAN)),
 	)
 
-	// Convert hex string to raw bytes for Switch
+	// Hex string → raw bytes (TCP üzerinden göndermek için)
+	// Örn: "0200..." → []byte{0x02, 0x00, ...}
 	rawISOBytes, err := hex.DecodeString(hexReq)
 	if err != nil {
 		span.SetAttributes(
@@ -282,12 +298,15 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		return
 	}
 
-	// Use Switch for TPDU-based communication
+	// Switch'e gönder ve response bekle
+	// ÖNEMLİ: Bu blocking call (timeout ile)
+	// Switch internal olarak: TPDU wrap → TCP send → response wait → TPDU unwrap
 	switchStart := time.Now()
 	response, err := s.switchInstance.HandleTerminalRequest(ctx, rawISOBytes)
-	switchDone := time.Now()
+	switchDone := time.Now() // switch_rtt: en kritik metrik
 	if err != nil {
-		// Async audit log for error case
+		// Switch error: timeout, connection error, vs.
+		// Async audit log (non-blocking: channel'a at, worker goroutine yazar)
 		s.asyncLogAcquirerTx(&req, &hexReq, nil, store.TransactionStatus("ERROR"))
 		span.SetAttributes(
 			attribute.String("transaction.status", "failed"),
@@ -312,10 +331,12 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 		return
 	}
 
-	// Async audit log: single INSERT with final status (non-blocking)
+	// Async audit log: tek INSERT, final status ile (non-blocking)
+	// ÖNEMLİ: Audit log ana işlemi bloklamaz, channel'a at ve devam et
+	// Worker goroutine (3 adet) background'da DB'ye yazar
 	{
-		status := store.TransactionStatus("DECLINED")
-		if respMsg.RespCode == "00" {
+		status := store.TransactionStatus("DECLINED") // Default: declined
+		if respMsg.RespCode == "00" {                 // "00" = approved
 			status = store.TransactionStatus("APPROVED")
 		}
 		rc := respMsg.RespCode
@@ -324,10 +345,15 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 
 	parseDone := time.Now()
 
-	// Timing log
+	// Timing log: her adımın süresini log'la (performance debugging için)
+	// queue: limiter'da bekleme süresi (0 ise hemen slot bulunmuş)
+	// pack: ISO message → hex dönüşüm süresi
+	// switch_rtt: issuer'a gidip gelme süresi (EN ÖNEMLİ METRİK)
+	// parse: hex → ISO message parse süresi
+	// total: toplam süre (HTTP request başından sona)
 	queueWait := float64(0)
 	if v, exists := c.Get("queue_wait_ms"); exists {
-		queueWait = v.(float64)
+		queueWait = v.(float64) // Middleware'den gelen değer
 	}
 	log.Printf("acquirer: txn queue=%.0fms pack=%dms switch_rtt=%dms parse=%dms total=%dms",
 		queueWait,
@@ -439,9 +465,18 @@ func (s *HTTPServer) handleListIssuerTransactions(c *gin.Context) {
 
 // asyncLogAcquirerTx fires a non-blocking goroutine to INSERT a single acquirer
 // transaction record with its final status. Optional responseCode can be provided.
+//
+// ASYNC PATTERN:
+// - Ana işlemi bloklamaz (channel'a at ve devam et)
+// - Channel buffer: 1000 (burst traffic'i absorbe eder)
+// - 3 worker goroutine: channel'dan okur ve DB'ye yazar
+// - Channel full ise: drop (select default case)
+//
+// ÖNEMLİ: Audit log başarısız olsa bile transaction devam eder
+// (audit log transaction'ı bloklamaz)
 func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hexResp *string, status store.TransactionStatus, responseCode ...*string) {
 	if s.appStore == nil {
-		return
+		return // DB yok, audit log disabled
 	}
 	amount, err := parseAmount12(req.AmountTrn)
 	if err != nil {
@@ -476,9 +511,13 @@ func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hex
 		ResponseHex:  hexResp,
 	}
 
+	// Channel'a gönder (non-blocking)
 	select {
 	case s.auditCh <- tx:
+		// Başarılı: worker goroutine alacak ve DB'ye yazacak
 	default:
+		// Channel full: drop (audit log kaybı kabul edilebilir)
+		// ÖNEMLİ: Ana işlemi bloklamak yerine audit log'u drop et
 	}
 }
 
@@ -498,13 +537,23 @@ func parseAmount12(s string) (int64, error) {
 }
 
 // maskPAN masks the PAN for logging/tracing
+//
+// GÜVENLİK: PAN (kart numarası) hassas veri, log'larda tam görünmemeli
+//
+// Format:
+// - 6 digit'ten kısa: tamamen mask (****)
+// - 10 digit'ten kısa: ilk 4 + mask (4111****)
+// - 10+ digit: ilk 4 + mask + son 4 (4111********1111)
+//
+// Örn: "4111111111111111" → "4111********1111"
 func maskPAN(pan string) string {
 	if len(pan) <= 6 {
-		return strings.Repeat("*", len(pan))
+		return strings.Repeat("*", len(pan)) // Çok kısa, tamamen mask
 	}
 	if len(pan) <= 10 {
-		return pan[:4] + strings.Repeat("*", len(pan)-4)
+		return pan[:4] + strings.Repeat("*", len(pan)-4) // İlk 4 göster
 	}
+	// Normal PAN (16 digit): ilk 4 + mask + son 4
 	return pan[:4] + strings.Repeat("*", len(pan)-8) + pan[len(pan)-4:]
 }
 

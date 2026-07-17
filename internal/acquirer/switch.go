@@ -16,18 +16,33 @@ import (
 )
 
 // AcquirerSwitch manages asynchronous ISO8583 message routing with multiplexing
+//
+// MİMARİ:
+// - Issuer'a N adet persistent TCP connection (connection pool)
+// - Her request'e unique correlation ID (corrID) atanır
+// - corrID TPDU header'a gömülür (ISO message'a dokunulmaz)
+// - Response geldiğinde corrID ile eşleştirilir ve doğru channel'a route edilir
+//
+// NEDEN MULTIPLEXING?
+// - Tek connection: sıralı işlem → yavaş (head-of-line blocking)
+// - Her request için yeni connection: overhead çok yüksek
+// - Connection pool + multiplexing: hem hızlı hem verimli
+//
+// NEDEN sync.Map?
+// - Concurrent read/write güvenli (map + mutex'ten daha performanslı)
+// - Key: corrID (uint32), Value: response channel (chan []byte)
 type AcquirerSwitch struct {
 	issuerAddr          string
-	connectionPool      []net.Conn    // Connection pool for load balancing
-	writeMutexes        []sync.Mutex  // Per-connection write mutexes
-	poolSize            int           // Number of connections in pool
-	switchTimeout       time.Duration // Timeout for issuer response
-	poolMutex           sync.Mutex    // Mutex for pool access
-	currentConnIndex    int           // Round-robin index
-	pendingTransactions sync.Map      // Key: uint32 (corrID), Value: chan []byte
-	corrIDCounter       atomic.Uint32 // Unique correlation ID generator
-	shutdownChan        chan struct{}
-	wg                  sync.WaitGroup
+	connectionPool      []net.Conn     // TCP connection pool (örn: 50 connection)
+	writeMutexes        []sync.Mutex   // Her connection için ayrı mutex (byte interleaving önleme)
+	poolSize            int            // Pool'daki connection sayısı
+	switchTimeout       time.Duration  // Issuer'dan response bekleme timeout'u
+	poolMutex           sync.Mutex     // Pool'a erişim mutex'i (connection ekleme/çıkarma)
+	currentConnIndex    int            // Round-robin için index (hangi connection sırada)
+	pendingTransactions sync.Map       // Bekleyen transaction'lar: corrID → response channel
+	corrIDCounter       atomic.Uint32  // Unique corrID üreteci (atomic: race-free)
+	shutdownChan        chan struct{}  // Shutdown sinyali
+	wg                  sync.WaitGroup // Goroutine'lerin bitmesini beklemek için
 }
 
 // NewAcquirerSwitch creates a new switch instance with connection pooling
@@ -101,33 +116,52 @@ func (s *AcquirerSwitch) Stop(ctx context.Context) error {
 
 // HandleTerminalRequest processes a terminal request with multiplexing.
 // Embeds a unique correlation ID in the TPDU header — no ISO re-parsing needed.
+//
+// AKIŞ:
+// 1. Unique corrID üret (atomic counter)
+// 2. Response channel oluştur (buffered, size=1)
+// 3. corrID → channel mapping'i sync.Map'e kaydet
+// 4. Request'i issuer'a gönder (TPDU'ya corrID göm)
+// 5. Response'u bekle (timeout ile)
+// 6. Cleanup: corrID'yi sync.Map'ten sil
+//
+// ÖNEMLİ: Channel'ı KAPATMA!
+// - close(responseChan) → panic riski (listener hâlâ yazıyor olabilir)
+// - GC otomatik temizler (her iki goroutine de referansı bırakınca)
 func (s *AcquirerSwitch) HandleTerminalRequest(ctx context.Context, rawISO []byte) ([]byte, error) {
-	// Generate unique correlation ID (embedded in TPDU, not in ISO message)
+	// 1. Unique corrID üret (atomic: thread-safe)
 	corrID := s.corrIDCounter.Add(1)
 
-	// Create response channel for this transaction
+	// 2. Bu transaction için response channel oluştur
+	// Buffered (size=1): listener non-blocking send yapabilsin
 	responseChan := make(chan []byte, 1)
 
-	// Store channel — corrID guarantees no collision
+	// 3. corrID → channel mapping'i kaydet
+	// corrID unique olduğu için collision riski yok
 	s.pendingTransactions.Store(corrID, responseChan)
-	defer s.pendingTransactions.Delete(corrID)
-	// NOTE: Do NOT close(responseChan) — causes panic if listener sends concurrently.
-	// Channel will be GC'd after both goroutines drop references.
+	defer s.pendingTransactions.Delete(corrID) // Fonksiyon bitince temizle
+	// NOT: close(responseChan) YAPMA! Listener concurrent yazıyor olabilir → panic
+	// GC otomatik temizler (her iki taraf da referansı bırakınca)
 
-	// Send to issuer with TPDU wrapper (corrID embedded in TPDU bytes 1-4)
+	// 4. Request'i issuer'a gönder (TPDU'ya corrID göm)
 	if err := s.sendToIssuer(rawISO, corrID); err != nil {
 		return nil, fmt.Errorf("failed to send to issuer: %w", err)
 	}
 
-	// Wait for response with timeout (use NewTimer to allow early GC via Stop)
+	// 5. Response'u bekle (3 farklı senaryo)
+	// NewTimer kullan (time.After yerine): Stop() ile erken GC mümkün
 	timer := time.NewTimer(s.switchTimeout)
-	defer timer.Stop()
+	defer timer.Stop() // Memory leak önleme
 	select {
 	case response := <-responseChan:
+		// SENARYO 1: Response geldi (normal case)
 		return response, nil
 	case <-timer.C:
+		// SENARYO 2: Timeout (issuer yavaş veya cevap vermiyor)
+		// corrID sync.Map'te kalır, late response gelirse "no pending request" log'u görülür
 		return nil, fmt.Errorf("transaction timeout after %s", s.switchTimeout)
 	case <-ctx.Done():
+		// SENARYO 3: Client bağlantıyı kesti (HTTP request cancelled)
 		return nil, ctx.Err()
 	}
 }
@@ -215,23 +249,31 @@ func (s *AcquirerSwitch) listenForResponses(ctx context.Context, poolIndex int) 
 			return fmt.Errorf("read packet failed: %w", err)
 		}
 
-		// Extract correlation ID from TPDU bytes 1-4 (zero-alloc, no ISO parsing)
+		// corrID'yi TPDU'dan çıkar (bytes 1-4)
+		// Zero-allocation: ISO message parse etmeye gerek yok
 		if len(packet) < 5 {
+			// Packet çok kısa, corrupt olabilir
 			continue
 		}
-		corrID := binary.BigEndian.Uint32(packet[1:5])
-		isoMessage := packet[5:] // strip TPDU
+		corrID := binary.BigEndian.Uint32(packet[1:5]) // TPDU bytes 1-4: corrID
+		isoMessage := packet[5:]                       // TPDU'yu at, sadece ISO message
 
-		// Route to waiting channel
+		// corrID ile bekleyen channel'ı bul ve response'u route et
 		if value, ok := s.pendingTransactions.Load(corrID); ok {
+			// Bekleyen request var!
 			responseChan := value.(chan []byte)
 			select {
 			case responseChan <- isoMessage:
-				// Successfully routed response
+				// Başarılı! Response channel'a yazıldı, HandleTerminalRequest alacak
 			default:
+				// Channel full (olmamalı, buffered size=1)
 				log.Printf("acquirer: response dropped for corrID %d (channel full)", corrID)
 			}
 		} else {
+			// Bekleyen request yok!
+			// Sebepler:
+			// 1. Timeout oldu, corrID sync.Map'ten silindi
+			// 2. Late response (issuer çok yavaş cevap verdi)
 			log.Printf("acquirer: no pending request for corrID %d (late response or timeout)", corrID)
 		}
 	}
@@ -240,20 +282,36 @@ func (s *AcquirerSwitch) listenForResponses(ctx context.Context, poolIndex int) 
 // sendToIssuer sends message with TPDU wrapper using round-robin load balancing
 // with retry logic: 3 attempts with 100ms delay between retries.
 // corrID is embedded in TPDU bytes 1-4 for correlation on response.
+//
+// TPDU FORMAT:
+// [2-byte Length] + [5-byte TPDU] + [ISO Message]
+//
+//	└─ TPDU: [0x60] + [4-byte corrID]
+//
+// ROUND-ROBIN LOAD BALANCING:
+// - currentConnIndex: sıradaki connection index'i
+// - Her send'de +1 artır, poolSize'a ulaşınca 0'a dön
+// - Tüm connection'lar eşit yük alır
+//
+// RETRY LOGIC:
+// - 3 deneme, aralarında 100ms bekleme
+// - Connection yoksa veya write error → retry
+// - 3 deneme de başarısız → error döndür
 func (s *AcquirerSwitch) sendToIssuer(rawISO []byte, corrID uint32) error {
 	var lastErr error
 
 	for attempt := 0; attempt < 3; attempt++ {
-		// Get next connection from pool (round-robin)
+		// Round-robin: sıradaki connection'ı al
 		s.poolMutex.Lock()
-		connIndex := s.currentConnIndex
-		s.currentConnIndex = (s.currentConnIndex + 1) % s.poolSize
-		conn := s.connectionPool[connIndex]
+		connIndex := s.currentConnIndex                            // Mevcut index
+		s.currentConnIndex = (s.currentConnIndex + 1) % s.poolSize // Bir sonraki için +1
+		conn := s.connectionPool[connIndex]                        // Connection'ı al
 		s.poolMutex.Unlock()
 
 		if conn == nil {
+			// Connection henüz kurulmamış veya kopmuş
 			lastErr = errors.New("no connection to issuer")
-			// Connection yoksa yeniden dene, belki listener yeniden bağlanmıştır
+			// Listener goroutine yeniden bağlanıyor olabilir, bekle ve tekrar dene
 			if attempt < 2 {
 				time.Sleep(100 * time.Millisecond)
 				continue
@@ -261,38 +319,47 @@ func (s *AcquirerSwitch) sendToIssuer(rawISO []byte, corrID uint32) error {
 			return lastErr
 		}
 
-		// Create TPDU wrapper: [2-byte Length] + [5-byte TPDU] + ISO Message
-		// Bytes 1-4 carry the correlation ID for response routing
-		tpdu := [5]byte{0x60}
-		binary.BigEndian.PutUint32(tpdu[1:5], corrID)
-		totalLen := len(tpdu) + len(rawISO)
+		// TPDU oluştur: [0x60] + [4-byte corrID]
+		// 0x60: TPDU identifier (ISO8583 standart)
+		// corrID: Response routing için (bytes 1-4)
+		tpdu := [5]byte{0x60}                         // İlk byte: 0x60
+		binary.BigEndian.PutUint32(tpdu[1:5], corrID) // Bytes 1-4: corrID (big-endian)
+		totalLen := len(tpdu) + len(rawISO)           // TPDU + ISO message uzunluğu
 
-		// Create packet: [2-byte length] + [TPDU] + [ISO]
+		// Packet oluştur: [2-byte length prefix] + [TPDU] + [ISO]
+		// Length prefix: TCP stream'de packet sınırlarını belirlemek için
 		packet := make([]byte, 2+totalLen)
-		binary.BigEndian.PutUint16(packet[:2], uint16(totalLen))
-		copy(packet[2:], tpdu[:])
-		copy(packet[2+len(tpdu):], rawISO)
+		binary.BigEndian.PutUint16(packet[:2], uint16(totalLen)) // İlk 2 byte: uzunluk
+		copy(packet[2:], tpdu[:])                                // TPDU'yu kopyala
+		copy(packet[2+len(tpdu):], rawISO)                       // ISO message'ı kopyala
 
-		// Send packet (synchronized per connection to prevent byte interleaving)
+		// Packet'i gönder (connection başına mutex: byte interleaving önleme)
+		// ÖNEMLİ: Aynı connection'a concurrent write → bytes karışır → corrupt packet
+		// Mutex: aynı anda sadece 1 goroutine yazabilir
 		s.writeMutexes[connIndex].Lock()
-		_, err := conn.Write(packet)
+		_, err := conn.Write(packet) // TCP write (blocking)
 		s.writeMutexes[connIndex].Unlock()
 		if err == nil {
+			// Başarılı!
 			if attempt > 0 {
+				// İlk denemede başarısız olmuştuk, log'la
 				log.Printf("acquirer: sendToIssuer succeeded on attempt %d/3", attempt+1)
 			}
 			return nil // Success!
 		}
 
+		// Write error (connection kopmuş olabilir)
 		lastErr = err
 		log.Printf("acquirer: sendToIssuer attempt %d/3 failed: %v", attempt+1, err)
 
 		// Son deneme değilse bekle ve tekrar dene
+		// Listener goroutine connection'ı yeniden kuruyor olabilir
 		if attempt < 2 {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
 
+	// 3 deneme de başarısız
 	return fmt.Errorf("write failed after 3 attempts: %w", lastErr)
 }
 
