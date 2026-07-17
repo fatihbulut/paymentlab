@@ -116,6 +116,31 @@
         }
         .scrollable-content {
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* Mobile: allow natural page scroll instead of clipping inside fixed viewport */
+        @media (max-width: 1023px) {
+            #requestSection,
+            #responseSection {
+                flex: none !important;
+                min-height: auto !important;
+            }
+
+            #req-content-parsed,
+            #req-content-raw,
+            #req-content-json,
+            #res-content-parsed,
+            #res-content-raw,
+            #res-content-json {
+                height: auto !important;
+                min-height: 12rem;
+                max-height: none;
+            }
+
+            #resizer {
+                display: none;
+            }
         }
         .scrollable-content::-webkit-scrollbar {
             width: 6px;
@@ -178,7 +203,7 @@
     </header>
 
     <!-- App Shell -->
-    <div class="flex" style="height: calc(100vh - 60px)">
+    <div class="flex lg:h-[calc(100vh-60px)]">
 
         <!-- Side Nav Rail -->
         <nav id="sideNav" class="w-[52px] bg-[#0a0a0a] border-r border-gray-800/50 flex flex-col items-center py-3 gap-1 flex-shrink-0">
@@ -210,14 +235,14 @@
         </nav>
 
         <!-- Pages Container -->
-        <div id="appPages" class="flex-1 overflow-hidden">
+        <div id="appPages" class="flex-1 min-w-0 lg:min-h-0 lg:overflow-hidden">
 
         <!-- ═══ Transaction Page ═══ -->
-        <main id="page-transaction" class="p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 h-full overflow-hidden" role="main">
+        <main id="page-transaction" class="p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:h-full lg:overflow-hidden min-w-0" role="main">
 
         <!-- Left Column: Acquirer Console -->
         <section class="w-full lg:w-[280px] lg:max-w-[280px] lg:flex-shrink-0 min-w-0">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col min-w-0 overflow-hidden">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col min-w-0 lg:overflow-hidden">
                 <div class="mb-4 pb-3 border-b border-gray-800/50">
                     <h2 class="text-sm text-gray-300">Acquirer</h2>
                 </div>
@@ -373,13 +398,13 @@
 
         <!-- Middle Column: ISO 8583 Visualizer -->
         <section class="flex-1 order-2 lg:order-1 min-w-0" aria-labelledby="iso-message-heading">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col min-w-0 overflow-hidden">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col min-w-0 lg:overflow-hidden">
                 <!-- Header -->
                 <div class="mb-4 pb-3 border-b border-gray-800/50">
                     <h2 id="iso-message-heading" class="text-sm text-gray-300">ISO 8583 Message</h2>
                 </div>
 
-                <div class="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
+                <div class="flex flex-col gap-3 min-w-0 lg:flex-1 lg:min-h-0">
                     <!-- Request Section -->
                     <div id="requestSection" class="flex flex-col min-w-0" style="flex: 1 1 50%; min-height: 0;">
                         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2 min-w-0">
@@ -558,11 +583,11 @@
 
         <!-- Right Column: Issuer Engine -->
         <section class="w-full lg:w-[340px] lg:flex-shrink-0 order-1 lg:order-3" aria-labelledby="issuer-engine-heading">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col">
                 <div class="mb-4 pb-3 border-b border-gray-800/50">
                     <h2 id="issuer-engine-heading" class="text-sm text-gray-300">Issuer Engine</h2>
                 </div>
-                <div class="flex-1 flex flex-col gap-4 overflow-hidden">
+                <div class="flex-1 flex flex-col gap-4 lg:overflow-hidden">
                     <!-- Decoded Data -->
                     <div>
                         <h3 class="text-xs text-gray-400 mb-2">Decoded</h3>
@@ -654,9 +679,9 @@
         </main><!-- /page-transaction -->
 
         <!-- ═══ Cards Page ═══ -->
-        <div id="page-cards" style="display:none" class="h-full p-4 lg:p-6 flex gap-4 overflow-hidden">
+        <div id="page-cards" style="display:none" class="lg:h-full p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:overflow-hidden min-w-0">
             <!-- Create Card Panel -->
-            <div class="w-[320px] flex-shrink-0 flex flex-col gap-4">
+            <div class="w-full lg:w-[320px] flex-shrink-0 flex flex-col gap-4">
                 <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 flex flex-col">
                     <div class="mb-4 pb-3 border-b border-gray-800/50 flex items-center justify-between">
                         <h2 id="cardFormTitle" class="text-sm text-gray-300">New Card</h2>
@@ -756,8 +781,8 @@
                 </div>
             </div>
             <!-- Cards List Panel -->
-            <div class="flex-1 flex flex-col overflow-hidden">
-                <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+            <div class="flex-1 flex flex-col lg:overflow-hidden min-w-0">
+                <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 lg:h-full flex flex-col">
                     <div class="mb-4 pb-3 border-b border-gray-800/50 flex items-center justify-between gap-2">
                         <div class="flex items-center gap-2">
                             <h2 class="text-sm text-gray-300">Cards</h2>
@@ -770,7 +795,7 @@
                             <button type="button" onclick="loadCards()" class="text-xs text-gray-500 hover:text-gray-300 px-1">↺</button>
                         </div>
                     </div>
-                    <div id="cardsList" class="flex-1 overflow-y-auto scrollable-content space-y-1.5 min-h-0">
+                    <div id="cardsList" class="flex-1 lg:overflow-y-auto scrollable-content space-y-1.5 lg:min-h-0">
                         <p class="text-xs text-gray-600 text-center py-8">Loading...</p>
                     </div>
                 </div>
@@ -778,8 +803,8 @@
         </div><!-- /page-cards -->
 
         <!-- ═══ History Page ═══ -->
-        <div id="page-history" style="display:none" class="h-full p-4 lg:p-6 flex flex-col overflow-hidden">
-            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 flex-1 flex flex-col overflow-hidden">
+        <div id="page-history" style="display:none" class="lg:h-full p-4 lg:p-6 flex flex-col lg:overflow-hidden min-w-0">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 flex-1 flex flex-col lg:overflow-hidden">
                 <!-- Header + Filters -->
                 <div class="mb-4 pb-3 border-b border-gray-800/50 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
@@ -811,7 +836,7 @@
                     </div>
                 </div>
                 <!-- Transaction List -->
-                <div id="txPageList" class="flex-1 overflow-y-auto scrollable-content space-y-1.5 min-h-0">
+                <div id="txPageList" class="flex-1 lg:overflow-y-auto scrollable-content space-y-1.5 lg:min-h-0">
                     <p class="text-xs text-gray-600 text-center py-8">Loading...</p>
                 </div>
             </div>
@@ -824,7 +849,7 @@
     <div id="txDetailBackdrop" onclick="closeTxDetail()" style="display:none"
         class="fixed inset-0 bg-black/60 z-40"></div>
     <div id="txDetailPanel" style="display:none; transform:translateX(100%)"
-        class="fixed right-0 top-0 h-full w-[660px] bg-[#0d0d0d] border-l border-gray-800/80 z-50 flex-col shadow-2xl transition-transform duration-300 ease-out">
+        class="fixed right-0 top-0 h-full w-full max-w-[660px] bg-[#0d0d0d] border-l border-gray-800/80 z-50 flex flex-col shadow-2xl transition-transform duration-300 ease-out">
         <div class="px-5 py-4 border-b border-gray-800/80 flex items-start justify-between flex-shrink-0 bg-[#111]">
             <div>
                 <h3 class="text-sm font-semibold text-white">ISO 8583 Detail</h3>
