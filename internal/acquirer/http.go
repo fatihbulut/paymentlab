@@ -26,6 +26,7 @@ import (
 type HTTPServer struct {
 	switchInstance *AcquirerSwitch
 	appStore       store.Store
+	cardService    *card.Service
 	limiter        *ConcurrencyLimiter
 	auditCh        chan *store.AcquirerTransaction
 }
@@ -34,9 +35,11 @@ func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPSe
 	if appStore == nil {
 		panic("acquirer HTTP server: store is nil - database is required")
 	}
+	cardSvc := card.NewService(appStore)
 	srv := &HTTPServer{
 		switchInstance: switchInstance,
 		appStore:       appStore,
+		cardService:    cardSvc,
 		limiter:        NewConcurrencyLimiter(),
 		auditCh:        make(chan *store.AcquirerTransaction, 1000),
 	}
@@ -159,8 +162,7 @@ func (s *HTTPServer) handleCreateCard(c *gin.Context) {
 		return
 	}
 
-	svc := card.NewService(s.appStore)
-	resp, err := svc.CreateCard(c.Request.Context(), req)
+	resp, err := s.cardService.CreateCard(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
@@ -183,8 +185,7 @@ func (s *HTTPServer) handleListCards(c *gin.Context) {
 		}
 	}
 
-	svc := card.NewService(s.appStore)
-	resp, err := svc.ListCards(c.Request.Context(), limit, offset)
+	resp, err := s.cardService.ListCards(c.Request.Context(), limit, offset)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
@@ -194,18 +195,13 @@ func (s *HTTPServer) handleListCards(c *gin.Context) {
 }
 
 func (s *HTTPServer) handleUpdateCard(c *gin.Context) {
-	if s.appStore == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
-		return
-	}
 	id := c.Param("id")
 	var req card.UpdateCardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request JSON"})
 		return
 	}
-	svc := card.NewService(s.appStore)
-	resp, err := svc.UpdateCard(c.Request.Context(), id, req)
+	resp, err := s.cardService.UpdateCard(c.Request.Context(), id, req)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
@@ -215,8 +211,7 @@ func (s *HTTPServer) handleUpdateCard(c *gin.Context) {
 
 func (s *HTTPServer) handleDeleteCard(c *gin.Context) {
 	id := c.Param("id")
-	svc := card.NewService(s.appStore)
-	if err := svc.DeleteCard(c.Request.Context(), id); err != nil {
+	if err := s.cardService.DeleteCard(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
 	}
@@ -381,8 +376,7 @@ func (s *HTTPServer) handleTopUpCard(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be a positive integer"})
 		return
 	}
-	svc := card.NewService(s.appStore)
-	resp, err := svc.TopUp(c.Request.Context(), id, body.Amount)
+	resp, err := s.cardService.TopUp(c.Request.Context(), id, body.Amount)
 	if err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
 		return
