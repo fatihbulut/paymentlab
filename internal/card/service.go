@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"iso-parser-service/internal/store"
+	"iso-parser-service/internal/util"
 )
 
 type Service struct {
@@ -84,7 +85,7 @@ func (s *Service) CreateCard(ctx context.Context, req CreateCardRequest) (*CardR
 	return &CardResponse{
 		ID:               created.ID,
 		PAN:              created.PAN,
-		PANMasked:        maskPAN(created.PAN),
+		PANMasked:        util.MaskPAN(created.PAN),
 		ExpiryDate:       created.ExpiryDate,
 		Status:           string(created.Status),
 		Scheme:           created.Scheme,
@@ -109,7 +110,7 @@ func (s *Service) ListCards(ctx context.Context, limit int, offset int) ([]CardR
 		out = append(out, CardResponse{
 			ID:               c.ID,
 			PAN:              c.PAN,
-			PANMasked:        maskPAN(c.PAN),
+			PANMasked:        util.MaskPAN(c.PAN),
 			ExpiryDate:       c.ExpiryDate,
 			Status:           string(c.Status),
 			Scheme:           c.Scheme,
@@ -175,7 +176,7 @@ func (s *Service) UpdateCard(ctx context.Context, id string, req UpdateCardReque
 	return &CardResponse{
 		ID:               updated.ID,
 		PAN:              updated.PAN,
-		PANMasked:        maskPAN(updated.PAN),
+		PANMasked:        util.MaskPAN(updated.PAN),
 		ExpiryDate:       updated.ExpiryDate,
 		Status:           string(updated.Status),
 		Scheme:           updated.Scheme,
@@ -218,16 +219,6 @@ func luhnValid(pan string) bool {
 	return sum%10 == 0
 }
 
-func maskPAN(pan string) string {
-	if len(pan) <= 6 {
-		return strings.Repeat("*", len(pan))
-	}
-	if len(pan) <= 10 {
-		return pan[:4] + strings.Repeat("*", len(pan)-4)
-	}
-	return pan[:4] + strings.Repeat("*", len(pan)-8) + pan[len(pan)-4:]
-}
-
 func (s *Service) TopUp(ctx context.Context, id string, amount int64) (*CardResponse, error) {
 	if s.store == nil {
 		return nil, fmt.Errorf("store is nil")
@@ -245,7 +236,7 @@ func (s *Service) TopUp(ctx context.Context, id string, amount int64) (*CardResp
 	return &CardResponse{
 		ID:               card.ID,
 		PAN:              card.PAN,
-		PANMasked:        maskPAN(card.PAN),
+		PANMasked:        util.MaskPAN(card.PAN),
 		ExpiryDate:       card.ExpiryDate,
 		Status:           string(card.Status),
 		Scheme:           card.Scheme,

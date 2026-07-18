@@ -9,6 +9,7 @@ import (
 	"iso-parser-service/internal/iso"
 	"iso-parser-service/internal/scheme"
 	"iso-parser-service/internal/store"
+	"iso-parser-service/internal/util"
 )
 
 type Engine struct {
@@ -57,7 +58,7 @@ func (e *Engine) Authorize(ctx context.Context, req *iso.ISOMessage) (*iso.ISOMe
 		resp.MTI = resp.MTI[:2] + "10"
 	}
 
-	amount, err := parseAmount12(req.AmountTrn)
+	amount, err := util.ParseAmount12(req.AmountTrn)
 	if err != nil {
 		decision.RespCode = RespDoNotHonor
 		resp.RespCode = decision.RespCode
@@ -120,7 +121,7 @@ func (e *Engine) handleReversal(ctx context.Context, req *iso.ISOMessage, decisi
 		resp.MTI = resp.MTI[:2] + "10"
 	}
 
-	amount, err := parseAmount12(req.AmountTrn)
+	amount, err := util.ParseAmount12(req.AmountTrn)
 	if err != nil {
 		decision.RespCode = RespDoNotHonor
 		resp.RespCode = decision.RespCode
@@ -153,21 +154,6 @@ func (e *Engine) handleReversal(ctx context.Context, req *iso.ISOMessage, decisi
 	resp.AuthRespID = authCode
 
 	return &resp, decision, nil
-}
-
-func parseAmount12(s string) (int64, error) {
-	if len(s) != 12 {
-		return 0, fmt.Errorf("amount must be 12 digits")
-	}
-	var v int64
-	for i := 0; i < 12; i++ {
-		b := s[i]
-		if b < '0' || b > '9' {
-			return 0, fmt.Errorf("amount must be digits")
-		}
-		v = v*10 + int64(b-'0')
-	}
-	return v, nil
 }
 
 func generateAuthCode6() string {

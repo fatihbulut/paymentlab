@@ -20,6 +20,7 @@ import (
 	"iso-parser-service/internal/iso"
 	otellib "iso-parser-service/internal/otel"
 	"iso-parser-service/internal/store"
+	"iso-parser-service/internal/util"
 )
 
 type HTTPServer struct {
@@ -283,7 +284,7 @@ func (s *HTTPServer) handleTransaction(c *gin.Context) {
 	// Context propagation: Add trace information to TCP request
 	span.SetAttributes(
 		attribute.String("transaction.mti", req.MTI),
-		attribute.String("transaction.pan_masked", maskPAN(req.PAN)),
+		attribute.String("transaction.pan_masked", util.MaskPAN(req.PAN)),
 	)
 
 	// Hex string → raw bytes (TCP üzerinden göndermek için)
@@ -478,7 +479,7 @@ func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hex
 	if s.appStore == nil {
 		return // DB yok, audit log disabled
 	}
-	amount, err := parseAmount12(req.AmountTrn)
+	amount, err := util.ParseAmount12(req.AmountTrn)
 	if err != nil {
 		amount = 0
 	}
@@ -500,7 +501,7 @@ func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hex
 	tx := &store.AcquirerTransaction{
 		STAN:         strings.TrimSpace(req.STAN),
 		MTI:          strings.TrimSpace(req.MTI),
-		PANMasked:    maskPAN(req.PAN),
+		PANMasked:    util.MaskPAN(req.PAN),
 		Amount:       amount,
 		CurrencyCode: strings.TrimSpace(req.CurCodeTrn),
 		TerminalID:   terminalID,
@@ -519,42 +520,6 @@ func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hex
 		// Channel full: drop (audit log kaybı kabul edilebilir)
 		// ÖNEMLİ: Ana işlemi bloklamak yerine audit log'u drop et
 	}
-}
-
-func parseAmount12(s string) (int64, error) {
-	if len(s) != 12 {
-		return 0, fmt.Errorf("amount must be 12 digits")
-	}
-	var v int64
-	for i := 0; i < 12; i++ {
-		b := s[i]
-		if b < '0' || b > '9' {
-			return 0, fmt.Errorf("amount must be digits")
-		}
-		v = v*10 + int64(b-'0')
-	}
-	return v, nil
-}
-
-// maskPAN masks the PAN for logging/tracing
-//
-// GÜVENLİK: PAN (kart numarası) hassas veri, log'larda tam görünmemeli
-//
-// Format:
-// - 6 digit'ten kısa: tamamen mask (****)
-// - 10 digit'ten kısa: ilk 4 + mask (4111****)
-// - 10+ digit: ilk 4 + mask + son 4 (4111********1111)
-//
-// Örn: "4111111111111111" → "4111********1111"
-func maskPAN(pan string) string {
-	if len(pan) <= 6 {
-		return strings.Repeat("*", len(pan)) // Çok kısa, tamamen mask
-	}
-	if len(pan) <= 10 {
-		return pan[:4] + strings.Repeat("*", len(pan)-4) // İlk 4 göster
-	}
-	// Normal PAN (16 digit): ilk 4 + mask + son 4
-	return pan[:4] + strings.Repeat("*", len(pan)-8) + pan[len(pan)-4:]
 }
 
 // recordHealthMetrics records critical health metrics for monitoring

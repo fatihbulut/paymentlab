@@ -10,6 +10,7 @@ import (
 	"iso-parser-service/internal/auth"
 	"iso-parser-service/internal/iso"
 	"iso-parser-service/internal/store"
+	"iso-parser-service/internal/util"
 )
 
 type Service struct {
@@ -83,7 +84,7 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 
 	// Async audit log: single INSERT with final status (non-blocking)
 	if s.store != nil {
-		amount, amountErr := parseAmount12(reqMsg.AmountTrn)
+		amount, amountErr := util.ParseAmount12(reqMsg.AmountTrn)
 		if amountErr != nil {
 			amount = 0
 		}
@@ -114,7 +115,7 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 		tx := &store.IssuerTransaction{
 			STAN:             strings.TrimSpace(reqMsg.STAN),
 			MTI:              strings.TrimSpace(reqMsg.MTI),
-			PANMasked:        maskPAN(reqMsg.PAN),
+			PANMasked:        util.MaskPAN(reqMsg.PAN),
 			Amount:           amount,
 			CurrencyCode:     strings.TrimSpace(reqMsg.CurCodeTrn),
 			Status:           status,
@@ -133,32 +134,6 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 	}
 
 	return hexResp, respMsg, nil
-}
-
-func parseAmount12(s string) (int64, error) {
-	if len(s) != 12 {
-		return 0, fmt.Errorf("amount must be 12 digits")
-	}
-	var v int64
-	for i := 0; i < 12; i++ {
-		b := s[i]
-		if b < '0' || b > '9' {
-			return 0, fmt.Errorf("amount must be digits")
-		}
-		v = v*10 + int64(b-'0')
-	}
-	return v, nil
-}
-
-func maskPAN(pan string) string {
-	pan = strings.ReplaceAll(strings.TrimSpace(pan), " ", "")
-	if len(pan) <= 6 {
-		return strings.Repeat("*", len(pan))
-	}
-	if len(pan) <= 10 {
-		return pan[:4] + strings.Repeat("*", len(pan)-4)
-	}
-	return pan[:4] + strings.Repeat("*", len(pan)-8) + pan[len(pan)-4:]
 }
 
 // decideResponse contains inline, deterministic rules for MVP.
