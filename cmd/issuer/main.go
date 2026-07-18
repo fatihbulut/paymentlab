@@ -48,6 +48,8 @@ func main() {
 			log.Fatalf("failed to run issuer migrations: %v", err)
 		}
 		log.Println("issuer postgres migrations applied")
+	} else {
+		log.Fatal("issuer: DATABASE_URL not set - database is required")
 	}
 
 	listenAddr := os.Getenv("ISSUER_LISTEN")

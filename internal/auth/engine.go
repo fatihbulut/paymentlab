@@ -27,6 +27,9 @@ type Decision struct {
 }
 
 func NewEngine(s store.Store) *Engine {
+	if s == nil {
+		panic("auth engine: store is nil - database is required")
+	}
 	return &Engine{store: s}
 }
 
@@ -34,9 +37,6 @@ func (e *Engine) Authorize(ctx context.Context, req *iso.ISOMessage) (*iso.ISOMe
 	start := time.Now()
 	if req == nil {
 		return nil, nil, fmt.Errorf("request is nil")
-	}
-	if e.store == nil {
-		return nil, nil, fmt.Errorf("store is nil")
 	}
 
 	decision := &Decision{}

@@ -20,10 +20,10 @@ type Service struct {
 }
 
 func NewService(appStore store.Store) *Service {
-	var engine *auth.Engine
-	if appStore != nil {
-		engine = auth.NewEngine(appStore)
+	if appStore == nil {
+		panic("issuer service: store is nil - database is required")
 	}
+	engine := auth.NewEngine(appStore)
 	svc := &Service{
 		store:   appStore,
 		auth:    engine,
@@ -36,9 +36,6 @@ func NewService(appStore store.Store) *Service {
 }
 
 func (s *Service) auditWorker() {
-	if s.store == nil {
-		return
-	}
 	for tx := range s.auditCh {
 		_, _ = s.store.IssuerTransactions().CreateIssuerTransaction(context.Background(), tx)
 	}
@@ -83,54 +80,52 @@ func (s *Service) HandleHex(ctx context.Context, hexReq string) (string, *iso.IS
 	)
 
 	// Async audit log: single INSERT with final status (non-blocking)
-	if s.store != nil {
-		amount, amountErr := util.ParseAmount12(reqMsg.AmountTrn)
-		if amountErr != nil {
-			amount = 0
-		}
+	amount, amountErr := util.ParseAmount12(reqMsg.AmountTrn)
+	if amountErr != nil {
+		amount = 0
+	}
 
-		status := store.TransactionStatus("DECLINED")
-		if respMsg != nil && respMsg.RespCode == auth.RespApproved {
-			status = store.TransactionStatus("APPROVED")
-		}
-		var rc *string
-		if respMsg != nil && strings.TrimSpace(respMsg.RespCode) != "" {
-			v := strings.TrimSpace(respMsg.RespCode)
-			rc = &v
-		}
-		var authCodePtr *string
-		var declineReason *string
-		var balanceBefore *int64
-		var balanceAfter *int64
-		var durationMs *float64
-		if decision != nil {
-			authCodePtr = decision.AuthCode
-			declineReason = decision.DeclineReason
-			balanceBefore = decision.BalanceBefore
-			balanceAfter = decision.BalanceAfter
-			d := decision.DurationMs
-			durationMs = &d
-		}
+	status := store.TransactionStatus("DECLINED")
+	if respMsg != nil && respMsg.RespCode == auth.RespApproved {
+		status = store.TransactionStatus("APPROVED")
+	}
+	var rc *string
+	if respMsg != nil && strings.TrimSpace(respMsg.RespCode) != "" {
+		v := strings.TrimSpace(respMsg.RespCode)
+		rc = &v
+	}
+	var authCodePtr *string
+	var declineReason *string
+	var balanceBefore *int64
+	var balanceAfter *int64
+	var durationMs *float64
+	if decision != nil {
+		authCodePtr = decision.AuthCode
+		declineReason = decision.DeclineReason
+		balanceBefore = decision.BalanceBefore
+		balanceAfter = decision.BalanceAfter
+		d := decision.DurationMs
+		durationMs = &d
+	}
 
-		tx := &store.IssuerTransaction{
-			STAN:             strings.TrimSpace(reqMsg.STAN),
-			MTI:              strings.TrimSpace(reqMsg.MTI),
-			PANMasked:        util.MaskPAN(reqMsg.PAN),
-			Amount:           amount,
-			CurrencyCode:     strings.TrimSpace(reqMsg.CurCodeTrn),
-			Status:           status,
-			ResponseCode:     rc,
-			AuthCode:         authCodePtr,
-			DeclineReason:    declineReason,
-			BalanceBefore:    balanceBefore,
-			BalanceAfter:     balanceAfter,
-			ProcessingTimeMs: durationMs,
-		}
+	tx := &store.IssuerTransaction{
+		STAN:             strings.TrimSpace(reqMsg.STAN),
+		MTI:              strings.TrimSpace(reqMsg.MTI),
+		PANMasked:        util.MaskPAN(reqMsg.PAN),
+		Amount:           amount,
+		CurrencyCode:     strings.TrimSpace(reqMsg.CurCodeTrn),
+		Status:           status,
+		ResponseCode:     rc,
+		AuthCode:         authCodePtr,
+		DeclineReason:    declineReason,
+		BalanceBefore:    balanceBefore,
+		BalanceAfter:     balanceAfter,
+		ProcessingTimeMs: durationMs,
+	}
 
-		select {
-		case s.auditCh <- tx:
-		default:
-		}
+	select {
+	case s.auditCh <- tx:
+	default:
 	}
 
 	return hexResp, respMsg, nil

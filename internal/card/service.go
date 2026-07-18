@@ -17,14 +17,13 @@ type Service struct {
 }
 
 func NewService(s store.Store) *Service {
+	if s == nil {
+		panic("card service: store is nil - database is required")
+	}
 	return &Service{store: s}
 }
 
 func (s *Service) CreateCard(ctx context.Context, req CreateCardRequest) (*CardResponse, error) {
-	if s.store == nil {
-		return nil, fmt.Errorf("store is nil")
-	}
-
 	pan := strings.ReplaceAll(strings.TrimSpace(req.PAN), " ", "")
 	if pan == "" {
 		return nil, fmt.Errorf("pan is required")
@@ -96,10 +95,6 @@ func (s *Service) CreateCard(ctx context.Context, req CreateCardRequest) (*CardR
 }
 
 func (s *Service) ListCards(ctx context.Context, limit int, offset int) ([]CardResponse, error) {
-	if s.store == nil {
-		return nil, fmt.Errorf("store is nil")
-	}
-
 	cards, err := s.store.Cards().ListCards(ctx, limit, offset)
 	if err != nil {
 		return nil, err
@@ -123,10 +118,6 @@ func (s *Service) ListCards(ctx context.Context, limit int, offset int) ([]CardR
 }
 
 func (s *Service) UpdateCard(ctx context.Context, id string, req UpdateCardRequest) (*CardResponse, error) {
-	if s.store == nil {
-		return nil, fmt.Errorf("store is nil")
-	}
-
 	existing, err := s.store.Cards().GetCardByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -187,9 +178,6 @@ func (s *Service) UpdateCard(ctx context.Context, id string, req UpdateCardReque
 }
 
 func (s *Service) DeleteCard(ctx context.Context, id string) error {
-	if s.store == nil {
-		return fmt.Errorf("store is nil")
-	}
 	return s.store.Cards().SoftDeleteCard(ctx, id)
 }
 
@@ -220,9 +208,6 @@ func luhnValid(pan string) bool {
 }
 
 func (s *Service) TopUp(ctx context.Context, id string, amount int64) (*CardResponse, error) {
-	if s.store == nil {
-		return nil, fmt.Errorf("store is nil")
-	}
 	if amount <= 0 {
 		return nil, fmt.Errorf("amount must be positive")
 	}

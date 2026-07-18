@@ -31,6 +31,9 @@ type HTTPServer struct {
 }
 
 func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPServer {
+	if appStore == nil {
+		panic("acquirer HTTP server: store is nil - database is required")
+	}
 	srv := &HTTPServer{
 		switchInstance: switchInstance,
 		appStore:       appStore,
@@ -44,9 +47,6 @@ func NewHTTPServer(switchInstance *AcquirerSwitch, appStore store.Store) *HTTPSe
 }
 
 func (s *HTTPServer) auditWorker() {
-	if s.appStore == nil {
-		return
-	}
 	for tx := range s.auditCh {
 		_, _ = s.appStore.AcquirerTransactions().CreateAcquirerTransaction(context.Background(), tx)
 	}
@@ -153,11 +153,6 @@ func (s *HTTPServer) requestTimeoutMiddleware() gin.HandlerFunc {
 }
 
 func (s *HTTPServer) handleCreateCard(c *gin.Context) {
-	if s.appStore == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
-		return
-	}
-
 	var req card.CreateCardRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request JSON"})
@@ -175,11 +170,6 @@ func (s *HTTPServer) handleCreateCard(c *gin.Context) {
 }
 
 func (s *HTTPServer) handleListCards(c *gin.Context) {
-	if s.appStore == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
-		return
-	}
-
 	limit := 50
 	offset := 0
 	if v := strings.TrimSpace(c.Query("limit")); v != "" {
@@ -224,10 +214,6 @@ func (s *HTTPServer) handleUpdateCard(c *gin.Context) {
 }
 
 func (s *HTTPServer) handleDeleteCard(c *gin.Context) {
-	if s.appStore == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
-		return
-	}
 	id := c.Param("id")
 	svc := card.NewService(s.appStore)
 	if err := svc.DeleteCard(c.Request.Context(), id); err != nil {
@@ -405,11 +391,6 @@ func (s *HTTPServer) handleTopUpCard(c *gin.Context) {
 }
 
 func (s *HTTPServer) handleListTransactions(c *gin.Context) {
-	if s.appStore == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
-		return
-	}
-
 	limit := 50
 	offset := 0
 	if v := strings.TrimSpace(c.Query("limit")); v != "" {
@@ -435,11 +416,6 @@ func (s *HTTPServer) handleListTransactions(c *gin.Context) {
 }
 
 func (s *HTTPServer) handleListIssuerTransactions(c *gin.Context) {
-	if s.appStore == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "database is not configured"})
-		return
-	}
-
 	limit := 50
 	offset := 0
 	if v := strings.TrimSpace(c.Query("limit")); v != "" {
@@ -476,9 +452,6 @@ func (s *HTTPServer) handleListIssuerTransactions(c *gin.Context) {
 // ÖNEMLİ: Audit log başarısız olsa bile transaction devam eder
 // (audit log transaction'ı bloklamaz)
 func (s *HTTPServer) asyncLogAcquirerTx(req *iso.ISOMessage, hexReq *string, hexResp *string, status store.TransactionStatus, responseCode ...*string) {
-	if s.appStore == nil {
-		return // DB yok, audit log disabled
-	}
 	amount, err := util.ParseAmount12(req.AmountTrn)
 	if err != nil {
 		amount = 0

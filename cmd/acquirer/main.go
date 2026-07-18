@@ -68,6 +68,8 @@ func main() {
 			log.Fatalf("failed to run migrations: %v", err)
 		}
 		log.Println("postgres migrations applied")
+	} else {
+		log.Fatal("acquirer: DATABASE_URL not set - database is required")
 	}
 
 	httpPort := os.Getenv("ACQUIRER_PORT")
