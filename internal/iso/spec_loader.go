@@ -29,6 +29,8 @@ type FieldSpec struct {
 	PadChar     string `json:"padChar"`
 }
 
+var Spec *iso8583.MessageSpec
+
 // LoadSpecFromJSON loads ISO 8583 spec from JSON file and creates MessageSpec
 func LoadSpecFromJSON(path string) (*iso8583.MessageSpec, error) {
 	data, err := os.ReadFile(path)
