@@ -1,0 +1,89 @@
+services:
+  issuer_postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-paymentlab}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paymentlab}
+    ports:
+      - "5432:5432"
+    volumes:
+      - issuer_pgdata:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=512MB"
+      - "-c"
+      - "work_mem=4MB"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "random_page_cost=1.1"
+
+  acquirer_postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${ACQUIRER_POSTGRES_DB:-acquirer}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paymentlab}
+    ports:
+      - "5433:5432"
+    volumes:
+      - acquirer_pgdata:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=2MB"
+      - "-c"
+      - "wal_buffers=8MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "random_page_cost=1.1"
+
+  issuer:
+    build:
+      context: .
+      dockerfile: Dockerfile.issuer
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD:-paymentlab}@issuer_postgres:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable
+      ISSUER_LISTEN: 0.0.0.0:5001
+    depends_on:
+      - issuer_postgres
+
+  acquirer:
+    build:
+      context: .
+      dockerfile: Dockerfile.acquirer
+    ports:
+      - "8081:8081"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD:-paymentlab}@acquirer_postgres:5432/${ACQUIRER_POSTGRES_DB:-acquirer}?sslmode=disable
+      ISSUER_DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD:-paymentlab}@issuer_postgres:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable
+      ISSUER_ADDR: issuer:5001
+      ACQUIRER_PORT: 8081
+      MAX_CONCURRENT: 500
+      MAX_QUEUE: 100000
+      QUEUE_TIMEOUT_SEC: 60
+    depends_on:
+      - acquirer_postgres
+      - issuer_postgres
+      - issuer
+
+volumes:
+  issuer_pgdata:
+  acquirer_pgdata:

@@ -1,0 +1,73 @@
+# Deploy this file on the ACQUIRER server.
+# Acquirer runs its own PostgreSQL for audit logs.
+# Connects to the Issuer's PostgreSQL (ISSUER_POSTGRES_HOST) for card CRUD only.
+#
+# Usage:
+#   cp .env.acquirer.example .env
+#   docker compose -f docker-compose.acquirer.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    environment:
+      POSTGRES_DB: ${ACQUIRER_POSTGRES_DB:-acquirer}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=50"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=2MB"
+      - "-c"
+      - "wal_buffers=8MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "random_page_cost=1.1"
+
+  acquirer:
+    image: ${ACQUIRER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-acquirer:latest}
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    ports:
+      - "${ACQUIRER_PORT:-8081}:8081"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD}@postgres:5432/${ACQUIRER_POSTGRES_DB:-acquirer}?sslmode=disable
+      ISSUER_DATABASE_URL: ${ISSUER_POSTGRES_HOST:+postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD}@${ISSUER_POSTGRES_HOST}:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable}
+      ISSUER_ADDR: ${ISSUER_ADDR}
+      ACQUIRER_PORT: 8081
+      ACQUIRER_TCP_POOL: ${ACQUIRER_TCP_POOL:-100}
+      # Backpressure / timeouts (tune under k6)
+      CONCURRENT_LIMIT: ${CONCURRENT_LIMIT:-200}
+      MAX_QUEUE: ${MAX_QUEUE:-0}
+      QUEUE_WAIT_TIMEOUT_MS: ${QUEUE_WAIT_TIMEOUT_MS:-0}
+      ACQUIRER_REQUEST_TIMEOUT_SEC: ${ACQUIRER_REQUEST_TIMEOUT_SEC:-2}
+      SWITCH_TIMEOUT_MS: ${SWITCH_TIMEOUT_MS:-1600}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_AUDIT_POOL_MAX: ${DB_AUDIT_POOL_MAX:-10}
+      DB_AUDIT_POOL_MIN: ${DB_AUDIT_POOL_MIN:-2}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

@@ -1,0 +1,67 @@
+# Deploy this file on the ISSUER server.
+# PostgreSQL lives here; acquirer connects to it remotely.
+#
+# Usage:
+#   cp .env.issuer.example .env
+#   docker compose -f docker-compose.issuer.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-paymentlab}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=30"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "effective_cache_size=256MB"
+      - "-c"
+      - "work_mem=2MB"
+      - "-c"
+      - "wal_buffers=8MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "random_page_cost=1.1"
+
+  issuer:
+    image: ${ISSUER_IMAGE:-ghcr.io/fatihbulut/iso-parser-service-issuer:latest}
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable
+      ISSUER_LISTEN: 0.0.0.0:5001
+      ISSUER_WORKER_POOL: ${ISSUER_WORKER_POOL:-50}
+      WORKER_ACQUIRE_TIMEOUT_SEC: ${WORKER_ACQUIRE_TIMEOUT_SEC:-2}
+      REQUEST_TIMEOUT_SEC: ${REQUEST_TIMEOUT_SEC:-3}
+      DB_SYNC_COMMIT: ${DB_SYNC_COMMIT:-off}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_AUDIT_POOL_MAX: ${DB_AUDIT_POOL_MAX:-15}
+      DB_AUDIT_POOL_MIN: ${DB_AUDIT_POOL_MIN:-3}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+    depends_on:
+      - postgres
+
+volumes:
+  pgdata:

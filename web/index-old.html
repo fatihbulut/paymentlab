@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISO 8583 Payment Simulator - ISO8583 Financial Transaction Testing Tool</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Interactive ISO 8583 payment simulator for testing financial transactions. Professional tool with real-time message encoding/decoding, tracing, and health metrics.">
+    <meta name="keywords" content="ISO 8583, iso8583, payment simulator, financial transactions, acquirer, issuer, payment testing, open banking, fintech, payment gateway, transaction processing, ISO8583 simulator">
+    <meta name="author" content="ISO Parser Service">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://paymentlab.dev/">
+    <meta property="og:title" content="ISO 8583 Payment Simulator - Professional Financial Testing">
+    <meta property="og:description" content="Interactive ISO 8583 payment simulator with real-time message processing, tracing, and health monitoring. Perfect for fintech development and testing.">
+    <meta property="og:image" content="https://paymentlab.dev/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="ISO 8583 Payment Simulator - Professional Financial Testing Tool">
+    <meta property="og:site_name" content="ISO 8583 Payment Simulator">
+    <meta property="fb:app_id" content="966242223397117">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://paymentlab.dev/">
+    <meta property="twitter:title" content="ISO 8583 Payment Simulator - Professional Financial Testing">
+    <meta property="twitter:description" content="Interactive ISO 8583 payment simulator with real-time message processing, tracing, and health monitoring.">
+    <meta property="twitter:image" content="data:image/svg+xml;base64,PD94bWx2ZXJzaW9uPSIxLjAiZW5jb2Rpbmc9IlVURi04Ij8+PHN2Z3dpZHRoPSIxMjAwImhlaWdodD0iNjMwInZpZXdCb3g9IjAwMTIwMDYzMCJmaWxsPSJub25lInhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PCEtLUJhY2tncm91bmQtLT48cmVjdHdpZHRoPSIxMjAwImhlaWdodD0iNjMwImZpbGw9IiMxYTFhMWEiLz48IS0tTG9nby1zY2FsZWR1cHZlcnNpb24tLT48Z3RyYW5zZm9ybT0idHJhbnNsYXRlKDEwMCwxNTApc2NhbGUoNikiPjxjaXJjbGVjeD0iMTYiY3k9IjE2InI9IjE1InN0cm9rZT0idXJsKCNncmFkNCkic3Ryb2tlLXdpZHRoPSIxImZpbGw9IiMwYTBhMGEiPjwvY2lyY2xlPjxyZWN0eD0iNiJ5PSIxMyJ3aWR0aD0iNiJoZWlnaHQ9IjYicng9IjEiZmlsbD0iIzEwYjk4MSJvcGFjaXR5PSIwLjkiPjwvcmVjdD48cGF0aGQ9Ik0xMzE2TDE5MTZNMTcxNEwxOTE2TDE3MTgic3Ryb2tlPSIjMDZiNmQ0InN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCJzdHJva2UtbGluZWpvaW49InJvdW5kImZpbGw9IiMwNmI2ZDQiPjwvcGF0aD48cmVjdHg9IjIwInk9IjEzIndpZHRoPSI2ImhlaWdodD0iNiJyeD0iMSJmaWxsPSIjYTg1NWY3Im9wYWNpdHk9IjAuOSI+PC9yZWN0PjxsaW5leDE9IjQieTE9IjQieDI9IjgiY3k9IjQic3Ryb2tlPSIjMTBiOTgxInN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjQieTE9IjQieDI9IjQiY3k9Ijgic3Ryb2tlPSIjMTBiOTgxInN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjI4InkxPSI0IngyPSIyNCJ5Mj0iNCJzdHJva2U9IiMwNmI2ZDQic3Ryb2tlLXdpZHRoPSIxLjUic3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L2xpbmU+PGxpbmV4MT0iMjgueTE9IjQieDI9IjI4InkyPSI4InN0cm9rZT0iIzA2YjZkNCJzdHJva2Utd2lkdGg9IjEuNSJzdHJva2UtbGluZWNhcD0icm91bmQiPjwvbGluZT48bGluZXgxPSI0InkxPSIyOCJ4Mj0iOCJ5Mj0iMjgic3Ryb2tlPSIjYTg1NWY3InN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjQieTE9IjI4IngyPSI0InkyPSIyNCJzdHJva2U9IiNhODU1Zjcic3Ryb2tlLXdpZHRoPSIxLjUic3Ryb2tlLWxpbmVjYXA9InJvdW5kIj48L2xpbmU+PGxpbmV4MT0iMjgueTE9IjI4IngyPSIyNCJ5Mj0iMjgic3Ryb2tlPSIjZjU5ZTBiInN0cm9rZS13aWR0aD0iMS41InN0cm9rZS1saW5lY2FwPSJyb3VuZCI+PC9saW5lPjxsaW5leDE9IjI4InkxPSIyOCJ4Mj0iMjgieTI9IjI0InN0cm9rZT0iI2Y1OWUwYiJzdHJva2Utd2lkdGg9IjEuNSJzdHJva2UtbGluZWNhcD0icm91bmQiPjwvbGluZT48L2c+PCEtLVRleHQtLT48dGV4dHg9IjQwMCJ5PSIyNTAiZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiZm9udC1zaXplPSI1NiJmb250LXdlaWdodD0iYm9sZCJmaWxsPSJ3aGl0ZSI+SVNPODU4MzwvdGV4dD48dGV4dHg9IjQwMCJ5PSIzMzAiZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiZm9udC1zaXplPSI0MiJmaWxsPSIjM2I4MmY2Ij5QYXltZW50U2ltdWxhdG9yPC90ZXh0Pjx0ZXh0eD0iNDAwInk9IjQxMCJmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiJmb250LXNpemU9IjI4ImZpbGw9IiM5NGEzYjgiPlByb2Zlc3Npb25hbEZpbmFuY2lhbFRlc3RpbmdUb29sPC90ZXh0Pjx0ZXh0eD0iNDAwInk9IjQ5MCJmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiJmb250LXNpemU9IjIyImZpbGw9IiM2NDc0OGIiPlJlYWwtdGltZU1lc3NhZ2VQcm9jZXNzaW5nJlRyYWNpbmc8L3RleHQ+PCEtLUdyYWRpZW50ZGVmaW5pdGlvbi0tPjxkZWZzPjxsaW5lYXJHcmFkaWVudGlkPSJncmFkNCJ4MT0iMSJ5MT0iMSJ4Mj0iMzEieTI9IjMxImdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcG9mZnNldD0iMCUic3RvcC1jb2xvcj0iIzEwYjk4MSJzdG9wLW9wYWNpdHk9IjAuNiI+PC9zdG9wPjxzdG9wb2Zmc2V0PSI1MCUic3RvcC1jb2xvcj0iIzA2YjZkNCJzdG9wLW9wYWNpdHk9IjAuNiI+PC9zdG9wPjxzdG9wb2Zmc2V0PSIxMDAlInN0b3AtY29sb3I9IiNhODU1Zjcic3RvcC1vcGFjaXR5PSIwLjYiPjwvc3RvcD48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48L3N2Zz4=">
+    <meta property="twitter:image:alt" content="ISO 8583 Payment Simulator - Professional Financial Testing Tool">
+        
+    <!-- Technical Meta Tags -->
+    <meta name="theme-color" content="#0a0a0a">
+    <meta name="msapplication-TileColor" content="#0a0a0a">
+    <meta name="application-name" content="ISO 8583 Payment Simulator">
+    <meta name="generator" content="Go + Gin + TailwindCSS">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://paymentlab.dev/">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='15' stroke='url(%23grad4)' stroke-width='1' fill='%230a0a0a'%3E%3C/circle%3E%3Crect x='6' y='13' width='6' height='6' rx='1' fill='%2310b981' opacity='0.9'%3E%3Canimate attributeName='opacity' values='0.9;0.3;0.9' dur='2s' repeatCount='indefinite'%3E%3C/animate%3E%3C/rect%3E%3Cpath d='M13 16 L19 16 M17 14 L19 16 L17 18' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Canimate attributeName='opacity' values='0.3;1;0.3' dur='2s' repeatCount='indefinite'%3E%3C/animate%3E%3C/path%3E%3Crect x='20' y='13' width='6' height='6' rx='1' fill='%23a855f7' opacity='0.9'%3E%3Canimate attributeName='opacity' values='0.3;0.9;0.3' dur='2s' repeatCount='indefinite'%3E%3C/animate%3E%3C/rect%3E%3Cline x1='4' y1='4' x2='8' y2='4' stroke='%2310b981' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='4' y1='4' x2='4' y2='8' stroke='%2310b981' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='4' x2='24' y2='4' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='4' x2='28' y2='8' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='4' y1='28' x2='8' y2='28' stroke='%23a855f7' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='4' y1='28' x2='4' y2='24' stroke='%23a855f7' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='28' x2='24' y2='28' stroke='%23f59e0b' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cline x1='28' y1='28' x2='28' y2='24' stroke='%23f59e0b' stroke-width='1.5' stroke-linecap='round'%3E%3C/line%3E%3Cdefs%3E%3ClinearGradient id='grad4' x1='1' y1='1' x2='31' y2='31' gradientUnits='userSpaceOnUse'%3E%3Cstop offset='0%25' stop-color='%2310b981' stop-opacity='0.6'%3E%3C/stop%3E%3Cstop offset='50%25' stop-color='%2306b6d4' stop-opacity='0.6'%3E%3C/stop%3E%3Cstop offset='100%25' stop-color='%23a855f7' stop-opacity='0.6'%3E%3C/stop%3E%3C/linearGradient%3E%3C/defs%3E%3C/svg%3E">
+    
+    <!-- Performance SEO - Critical Resources -->
+    <link rel="preload" href="/iso-engine.js" as="script">
+    <link rel="preload" href="https://cdn.tailwindcss.com" as="script">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" as="style">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/iso-engine.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- DNS Prefetch for External Resources -->
+    <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="//fonts.googleapis.com">
+    <link rel="dns-prefetch" href="//fonts.gstatic.com">
+        
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "ISO 8583 Payment Simulator",
+        "description": "Professional ISO 8583 payment simulator for testing financial transactions with real-time message encoding/decoding, tracing, and health metrics.",
+        "url": "https://paymentlab.dev/",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Modern web browser with JavaScript enabled",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "ISO Parser Service"
+        },
+        "keywords": "ISO 8583, payment simulator, financial transactions, acquirer, issuer, payment testing, open banking, fintech, payment gateway, transaction processing",
+        "programmingLanguage": "Go",
+        "isAccessibleForFree": true,
+        "featureList": [
+            "Real-time ISO 8583 message encoding and decoding",
+            "Interactive transaction simulation",
+            "Acquirer and Issuer communication testing",
+            "Health metrics monitoring",
+            "Mobile responsive design",
+            "Professional grade testing tools"
+        ]
+    }
+    </script>
+
+    <!-- Organization Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "ISO Parser Service",
+        "url": "https://paymentlab.dev/",
+        "logo": "data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 32 32' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='16' cy='16' r='15' stroke='%2310b981' stroke-width='2' fill='%230a0a0a'%3E%3C/circle%3E%3Crect x='8' y='14' width='4' height='4' rx='0.5' fill='%2310b981'%3E%3C/rect%3E%3Cpath d='M13 16 L19 16 M18 15 L19 16 L18 17' stroke='%2306b6d4' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3C/path%3E%3Crect x='20' y='14' width='4' height='4' rx='0.5' fill='%23a855f7'%3E%3C/rect%3E%3C/svg%3E",
+        "description": "Professional ISO 8583 payment transaction testing and simulation platform for fintech developers.",
+        "foundingDate": "2026",
+        "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "technical support",
+            "availableLanguage": ["English", "Turkish"]
+        },
+        "sameAs": [
+            "https://github.com/iso-parser-service",
+            "https://twitter.com/iso_parser"
+        ],
+        "areaServed": "Worldwide",
+        "knowsAbout": [
+            "ISO 8583",
+            "Payment Processing",
+            "Financial Transactions",
+            "Fintech Development",
+            "Acquirer Systems",
+            "Issuer Systems"
+        ]
+    }
+    </script>
+
+    <!-- FAQ Schema -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What is ISO 8583?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "ISO 8583 is the international standard for financial transaction card-originated messages. It defines the message format and communication flow between acquirer and issuer systems in payment processing networks."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How does the ISO 8583 Payment Simulator work?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "The simulator provides an interactive web interface to create, encode, and decode ISO 8583 messages. You can test different transaction types, channels (POS, ATM, Web), and see real-time message parsing between acquirer and issuer systems."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is the ISO 8583 Payment Simulator free to use?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes, the simulator is completely free to use. It's built with Go for the backend and modern web technologies for the frontend, allowing developers to test payment transactions without any cost."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "What transaction types can I test with the simulator?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "You can test various financial transactions including authorization requests (0100), response messages (0110), different card schemes (VISA, Mastercard), channels (POS, ATM, Web), and see real-time message encoding/decoding with field-by-field analysis."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I use this simulator for production payment testing?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "The simulator is designed for development, testing, and educational purposes. It provides a realistic ISO 8583 environment but should be used in development/testing environments, not for live production transactions."
+                }
+            }
+        ]
+    }
+    </script>
+        
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .scrollable-content {
+            overflow-y: auto;
+        }
+        .scrollable-content::-webkit-scrollbar {
+            width: 6px;
+        }
+        .scrollable-content::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+        .scrollable-content::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
+</head>
+<body class="bg-[#0c0c0c] text-white min-h-screen lg:overflow-hidden">
+    <!-- Header -->
+    <header class="px-6 py-3 border-b border-gray-800/50 bg-[#111]/80 backdrop-blur-sm">
+        <div class="flex items-center gap-3">
+            <!-- Logo -->
+            <div class="w-8 h-8 flex-shrink-0">
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="15" stroke="url(#grad4)" stroke-width="1" fill="#0a0a0a"></circle>
+                    <rect x="6" y="13" width="6" height="6" rx="1" fill="#10b981" opacity="0.9">
+                        <animate attributeName="opacity" values="0.9;0.3;0.9" dur="2s" repeatCount="indefinite"></animate>
+                    </rect>
+                    <path d="M13 16 L19 16 M17 14 L19 16 L17 18" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"></animate>
+                    </path>
+                    <rect x="20" y="13" width="6" height="6" rx="1" fill="#a855f7" opacity="0.9">
+                        <animate attributeName="opacity" values="0.3;0.9;0.3" dur="2s" repeatCount="indefinite"></animate>
+                    </rect>
+                    <line x1="4" y1="4" x2="8" y2="4" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="4" y1="4" x2="4" y2="8" stroke="#10b981" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="28" y1="4" x2="24" y2="4" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="28" y1="4" x2="28" y2="8" stroke="#06b6d4" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="4" y1="28" x2="8" y2="28" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="4" y1="28" x2="4" y2="24" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="28" y1="28" x2="24" y2="28" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"></line>
+                    <line x1="28" y1="28" x2="28" y2="24" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round"></line>
+                    <defs>
+                        <linearGradient id="grad4" x1="1" y1="1" x2="31" y2="31" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#10b981" stop-opacity="0.6"></stop>
+                            <stop offset="50%" stop-color="#06b6d4" stop-opacity="0.6"></stop>
+                            <stop offset="100%" stop-color="#a855f7" stop-opacity="0.6"></stop>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <h1 class="text-sm text-gray-400">ISO 8583 Payment Simulator</h1>
+            <div class="flex items-center gap-2 px-2 py-1 bg-yellow-500/10 border border-yellow-500/30 rounded-full">
+                <div class="w-4 h-4 relative">
+                    <!-- Gopher with Dozer -->
+                    <div class="absolute inset-0 flex items-center justify-center text-xs">🔧</div>
+                </div>
+                <span class="text-xs text-yellow-400 font-medium">In Development</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Container -->
+    <main class="p-4 lg:p-6 flex flex-col lg:flex-row gap-4 lg:gap-6 lg:h-[calc(100vh-60px)] overflow-hidden" role="main">
+        
+        <!-- Left Column: Acquirer Console -->
+        <section class="w-full lg:w-[280px] lg:flex-shrink-0">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                <!-- Header -->
+                <div class="mb-5 pb-3 border-b border-gray-800/50">
+                    <h2 id="acquirer-heading" class="text-sm text-gray-300">Acquirer</h2>
+                </div>
+
+                <!-- Form -->
+                <form id="transactionForm" class="flex-1 flex flex-col">
+                    <div class="flex-1 space-y-4">
+                        <!-- Amount -->
+                        <div class="space-y-1.5">
+                            <label for="amount" class="text-xs text-gray-400 block">Amount (TRY)</label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="amount" 
+                                    value="150.00"
+                                    class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 text-white h-9 text-sm rounded-md px-3 pr-8 outline-none font-mono"
+                                    placeholder="0.00"
+                                />
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <span class="text-xs text-gray-500">₺</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Number -->
+                        <div class="space-y-1.5">
+                            <label for="pan" class="text-xs text-gray-400 block">Card No</label>
+                            <input 
+                                type="text" 
+                                id="pan" 
+                                value="4532 1488 0343 6467"
+                                maxlength="19"
+                                class="w-full bg-[#1a1a1a] border border-gray-700/50 focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/20 text-white h-9 text-sm rounded-md px-3 outline-none font-mono"
+                                placeholder="0000 0000 0000 0000"
+                            />
+                        </div>
+
+                        <!-- Channel Segmented Control -->
+                        <div class="space-y-1.5">
+                            <label class="text-xs text-gray-400 block">Channel</label>
+                            <div class="bg-[#1a1a1a] border border-gray-700/50 rounded-md p-1 flex gap-1">
+                                <button
+                                    type="button"
+                                    id="channel-pos"
+                                    onclick="selectChannel('POS')"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white"
+                                >
+                                    POS
+                                </button>
+                                <button
+                                    type="button"
+                                    id="channel-atm"
+                                    onclick="selectChannel('ATM')"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
+                                >
+                                    ATM
+                                </button>
+                                <button
+                                    type="button"
+                                    id="channel-web"
+                                    onclick="selectChannel('Web')"
+                                    class="flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300"
+                                >
+                                    Web
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scenario Selector (Demo Only) -->
+                    <div class="bg-[#0a0a0a] border border-purple-500/30 rounded-md p-3 space-y-1.5 mt-4 opacity-75">
+                        <div class="flex items-center gap-2 mb-2">
+                            <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <circle cx="12" cy="12" r="1"></circle>
+                            </svg>
+                            <h3 class="text-xs text-purple-400">Scenario Selector</h3>
+                            <span class="text-xs text-gray-500 italic">(Demo Only)</span>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label for="scenario" class="text-xs text-gray-400 block">Transaction Outcome</label>
+                            <select 
+                                id="scenario"
+                                disabled
+                                class="w-full bg-[#1a1a1a] border border-purple-500/30 text-gray-500 h-9 text-xs rounded-md px-3 outline-none cursor-not-allowed"
+                            >
+                                <option value="00">00 - Approved</option>
+                                <option value="51">51 - Insufficient Funds</option>
+                                <option value="14">14 - Invalid Card</option>
+                                <option value="96">96 - System Error</option>
+                            </select>
+                            <p class="text-xs text-gray-500 italic mt-1">Not implemented yet</p>
+                        </div>
+                    </div>
+
+                    <!-- Process Button -->
+                    <button 
+                        type="submit"
+                        class="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-10 text-sm mt-4 rounded-md transition-colors"
+                    >
+                        Process
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Middle Column: ISO 8583 Visualizer -->
+        <section class="flex-1 order-2 lg:order-1" aria-labelledby="iso-message-heading">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                <!-- Header -->
+                <div class="mb-4 pb-3 border-b border-gray-800/50">
+                    <h2 id="iso-message-heading" class="text-sm text-gray-300">ISO 8583 Message</h2>
+                </div>
+
+                <div class="flex-1 flex flex-col gap-3 min-h-0">
+                    <!-- Request Section -->
+                    <div id="requestSection" class="flex flex-col" style="flex: 1 1 50%; min-height: 0;">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                            <h3 class="text-xs text-emerald-400">Request (0100)</h3>
+                            <div class="flex gap-0.5 border-b border-gray-800/50 overflow-x-auto">
+                                <button type="button" onclick="switchRequestTab('parsed')" id="req-tab-parsed" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-emerald-500 text-emerald-400 whitespace-nowrap">
+                                    Parsed
+                                </button>
+                                <button type="button" onclick="switchRequestTab('raw')" id="req-tab-raw" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
+                                    Raw
+                                </button>
+                                <button type="button" onclick="switchRequestTab('json')" id="req-tab-json" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
+                                    JSON
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-[#0a0a0a] border border-gray-800/50 rounded-md overflow-hidden">
+                            <!-- Parsed Fields Tab -->
+                            <div id="req-content-parsed" class="h-full overflow-y-auto scrollable-content">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-[#141414] sticky top-0 border-b border-gray-800/50">
+                                        <tr>
+                                            <th class="text-left px-2 py-2 text-gray-400 w-12">DE</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Field Name</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="font-mono">
+                                        <!-- Bitmap Rows -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-emerald-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Primary Bitmap</td>
+                                            <td class="px-2 py-2 text-emerald-400 font-mono text-xs break-all" id="requestPrimaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-emerald-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Secondary Bitmap</td>
+                                            <td class="px-2 py-2 text-emerald-400 font-mono text-xs" id="requestSecondaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-emerald-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Active Fields</td>
+                                            <td class="px-2 py-2 text-emerald-400 font-mono text-xs break-all" id="requestActiveFields">-</td>
+                                        </tr>
+                                        
+                                        <!-- Separator Row -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td colspan="3" class="px-2 py-1 text-center text-gray-600 text-xs">─ Data Elements ─</td>
+                                        </tr>
+                                        
+                                        <!-- Actual Fields -->
+                                        <tbody id="requestFields">
+                                            <tr class="border-b border-gray-800/30">
+                                                <td colspan="3" class="px-2 py-2 text-center text-gray-500">No data</td>
+                                            </tr>
+                                        </tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Raw Data Tab -->
+                            <div id="req-content-raw" class="h-full overflow-auto p-3 hidden">
+                                <!-- Hex Section -->
+                                <div class="mb-4">
+                                    <h4 class="text-xs text-emerald-400 mb-2">Hex Format</h4>
+                                    <div class="text-cyan-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="requestHex">
+                                        No data
+                                    </div>
+                                </div>
+                                
+                                <!-- ASCII Section -->
+                                <div>
+                                    <h4 class="text-xs text-emerald-400 mb-2">ASCII Format (MTI + Bitmap + Data)</h4>
+                                    <div class="text-cyan-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="requestAscii">
+                                        No data
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- JSON Tab -->
+                            <div id="req-content-json" class="h-full overflow-auto p-3 hidden">
+                                <pre class="text-cyan-400/90 font-mono text-xs leading-relaxed" id="requestJson">No data</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resizable Divider -->
+                    <div id="resizer" class="h-2 bg-gray-800/30 hover:bg-emerald-500/20 cursor-ns-resize transition-colors flex items-center justify-center group">
+                        <div class="w-8 h-0.5 bg-gray-700 group-hover:bg-emerald-500/50 rounded transition-colors"></div>
+                    </div>
+
+                    <!-- Response Section -->
+                    <div id="responseSection" class="flex flex-col" style="flex: 1 1 50%; min-height: 0;">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                            <h3 class="text-xs text-purple-400">Response (0110)</h3>
+                            <div class="flex gap-0.5 border-b border-gray-800/50 overflow-x-auto">
+                                <button type="button" onclick="switchResponseTab('parsed')" id="res-tab-parsed" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-purple-500 text-purple-400 whitespace-nowrap">
+                                    Parsed
+                                </button>
+                                <button type="button" onclick="switchResponseTab('raw')" id="res-tab-raw" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
+                                    Raw
+                                </button>
+                                <button type="button" onclick="switchResponseTab('json')" id="res-tab-json" class="px-2 py-1.5 lg:px-3 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400 whitespace-nowrap">
+                                    JSON
+                                </button>
+                            </div>
+                        </div>
+                        <div class="flex-1 bg-[#0a0a0a] border border-gray-800/50 rounded-md overflow-hidden">
+                            <!-- Parsed Fields Tab -->
+                            <div id="res-content-parsed" class="h-full overflow-y-auto scrollable-content">
+                                <table class="w-full text-xs">
+                                    <thead class="bg-[#141414] sticky top-0 border-b border-gray-800/50">
+                                        <tr>
+                                            <th class="text-left px-2 py-2 text-gray-400 w-12">DE</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Field Name</th>
+                                            <th class="text-left px-2 py-2 text-gray-400">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="font-mono">
+                                        <!-- Bitmap Rows -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-purple-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Primary Bitmap</td>
+                                            <td class="px-2 py-2 text-purple-400 font-mono text-xs break-all" id="responsePrimaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-purple-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Secondary Bitmap</td>
+                                            <td class="px-2 py-2 text-purple-400 font-mono text-xs" id="responseSecondaryBitmap">-</td>
+                                        </tr>
+                                        <tr class="border-b border-gray-800/30">
+                                            <td class="px-2 py-2 text-purple-400">-</td>
+                                            <td class="px-2 py-2 text-gray-500">Active Fields</td>
+                                            <td class="px-2 py-2 text-purple-400 font-mono text-xs break-all" id="responseActiveFields">-</td>
+                                        </tr>
+                                        
+                                        <!-- Separator Row -->
+                                        <tr class="border-b border-gray-800/30">
+                                            <td colspan="3" class="px-2 py-1 text-center text-gray-600 text-xs">─ Data Elements ─</td>
+                                        </tr>
+                                        
+                                        <!-- Actual Fields -->
+                                        <tbody id="responseFields">
+                                            <tr class="border-b border-gray-800/30">
+                                                <td colspan="3" class="px-2 py-2 text-center text-gray-500">No data</td>
+                                            </tr>
+                                        </tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Raw Data Tab -->
+                            <div id="res-content-raw" class="h-full overflow-auto p-3 hidden">
+                                <!-- Hex Section -->
+                                <div class="mb-4">
+                                    <h4 class="text-xs text-purple-400 mb-2">Hex Format</h4>
+                                    <div class="text-purple-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="responseHex">
+                                        No data
+                                    </div>
+                                </div>
+                                
+                                <!-- ASCII Section -->
+                                <div>
+                                    <h4 class="text-xs text-purple-400 mb-2">ASCII Format (MTI + Bitmap + Data)</h4>
+                                    <div class="text-purple-400/90 font-mono text-xs break-all leading-relaxed bg-[#0a0a0a] border border-gray-800/50 rounded p-2" id="responseAscii">
+                                        No data
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- JSON Tab -->
+                            <div id="res-content-json" class="h-full overflow-auto p-3 hidden">
+                                <pre class="text-purple-400/90 font-mono text-xs leading-relaxed" id="responseJson">No data</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Issuer Engine -->
+        <section class="w-full lg:w-[340px] lg:flex-shrink-0 order-1 lg:order-3" aria-labelledby="issuer-engine-heading">
+            <div class="bg-[#141414] border border-gray-800/50 rounded-lg p-5 h-full flex flex-col">
+                <!-- Header -->
+                <div class="mb-4 pb-3 border-b border-gray-800/50">
+                    <h2 id="issuer-engine-heading" class="text-sm text-gray-300">Issuer Engine</h2>
+                </div>
+
+                <div class="flex-1 flex flex-col gap-4">
+                    <!-- Decoded Data -->
+                    <div>
+                        <h3 class="text-xs text-gray-400 mb-2">Decoded</h3>
+                        <div class="bg-[#0a0a0a] border border-gray-800/50 rounded-md p-3 space-y-1.5">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">MTI</span>
+                                <span class="text-gray-300 font-mono" id="decodedMTI">0100</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Card Scheme</span>
+                                <span class="text-gray-300 font-mono" id="decodedScheme">VISA</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Amount</span>
+                                <span class="text-gray-300 font-mono" id="decodedAmount">150.00</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Channel</span>
+                                <span class="text-gray-300 font-mono" id="decodedChannel">POS</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Terminal</span>
+                                <span class="text-gray-300 font-mono" id="decodedTerminal">TERM0001</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Checklist (Demo Only) -->
+                    <div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <h3 class="text-xs text-gray-400">Checks</h3>
+                            <span class="text-xs text-gray-500 italic">(Demo Only)</span>
+                        </div>
+                        <div class="bg-[#0a0a0a] border border-gray-800/50 rounded-md p-3 space-y-2 opacity-75">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg id="checkCardIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Card Check</span>
+                                </div>
+                                <div id="checkCardText" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60">
+                                    PENDING
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg id="checkBalanceIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Balance</span>
+                                </div>
+                                <div id="checkBalanceText" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60">
+                                    PENDING
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg id="checkFraudIcon" class="w-3.5 h-3.5 text-yellow-400/60 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" stroke-width="2"></circle>
+                                        <path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>
+                                    </svg>
+                                    <span class="text-xs text-gray-400">Fraud</span>
+                                </div>
+                                <div id="checkFraudText" class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60">
+                                    PENDING
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 italic text-center mt-2">Not implemented yet</p>
+                        </div>
+                    </div>
+
+                    <!-- Result Code -->
+                    <div class="flex-1 flex flex-col">
+                        <h3 class="text-xs text-gray-400 mb-2">Result</h3>
+                        <div id="resultCard" class="flex-1 rounded-md border-2 border-emerald-500 bg-emerald-500/5 flex items-center justify-center transition-all">
+                            <div class="text-center">
+                                <div id="responseCodeDisplay" class="text-5xl mb-1 text-emerald-400">00</div>
+                                <div id="responseCodeDesc" class="text-xs text-gray-400">Approved</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let currentMessage = {};
+        let currentSTAN = '';
+        let activeRequestTab = 'parsed';
+        let activeResponseTab = 'parsed';
+        let selectedChannel = 'POS';
+        let currentTerminalId = 'POS00001'; // Default for POS
+        let isProcessing = false;
+
+        // Initialize ISO Engine when page loads
+        window.addEventListener('DOMContentLoaded', async function() {
+            try {
+                console.log('Initializing ISO Engine...');
+                await isoEngine.init();
+                console.log('ISO Engine ready:', isoEngine.ready);
+                updatePreview();
+            } catch (error) {
+                console.error('Failed to initialize ISO Engine:', error);
+                alert('Failed to load ISO Engine. Please refresh the page.');
+            }
+        });
+
+        // Channel selection
+        function selectChannel(channel) {
+            selectedChannel = channel;
+            ['POS', 'ATM', 'Web'].forEach(ch => {
+                const btn = document.getElementById('channel-' + ch.toLowerCase());
+                if (ch === channel) {
+                    btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all bg-emerald-500 text-white';
+                } else {
+                    btn.className = 'flex-1 py-1.5 px-2 rounded text-xs transition-all text-gray-400 hover:text-gray-300';
+                }
+            });
+            document.getElementById('decodedChannel').textContent = channel;
+            
+            // Update TerminalID based on channel (8 characters)
+            let terminalId = '';
+            switch(channel) {
+                case 'POS':
+                    terminalId = 'POS00001';
+                    break;
+                case 'ATM':
+                    terminalId = 'ATM00001';
+                    break;
+                case 'Web':
+                    terminalId = 'WEB00001';
+                    break;
+                default:
+                    terminalId = 'TERM0001';
+            }
+            
+            // Update currentTerminalId global variable
+            currentTerminalId = terminalId;
+            
+            // Update Issuer Engine display
+            document.getElementById('decodedTerminal').textContent = terminalId;
+            
+            console.log('Channel changed to:', channel, 'TerminalID:', terminalId);
+            updatePreview();
+        }
+
+        // Request tab switching
+        function switchRequestTab(tabName) {
+            activeRequestTab = tabName;
+            
+            ['parsed', 'raw', 'json'].forEach(tab => {
+                const btn = document.getElementById('req-tab-' + tab);
+                const content = document.getElementById('req-content-' + tab);
+                
+                if (tab === tabName) {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-emerald-500 text-emerald-400';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        // Response tab switching
+        function switchResponseTab(tabName) {
+            activeResponseTab = tabName;
+            
+            ['parsed', 'raw', 'json'].forEach(tab => {
+                const btn = document.getElementById('res-tab-' + tab);
+                const content = document.getElementById('res-content-' + tab);
+                
+                if (tab === tabName) {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-purple-500 text-purple-400';
+                    content.classList.remove('hidden');
+                } else {
+                    btn.className = 'px-3 py-1.5 text-xs transition-all border-b-2 border-transparent text-gray-500 hover:text-gray-400';
+                    content.classList.add('hidden');
+                }
+            });
+        }
+
+        // Resizable divider
+        (function() {
+            const resizer = document.getElementById('resizer');
+            const requestSection = document.getElementById('requestSection');
+            const responseSection = document.getElementById('responseSection');
+            let isResizing = false;
+            let startY = 0;
+            let startRequestFlex = 0;
+            let startResponseFlex = 0;
+
+            resizer.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                startY = e.clientY;
+                
+                const requestStyle = window.getComputedStyle(requestSection);
+                const responseStyle = window.getComputedStyle(responseSection);
+                startRequestFlex = parseFloat(requestStyle.flexGrow);
+                startResponseFlex = parseFloat(responseStyle.flexGrow);
+                
+                document.body.style.cursor = 'ns-resize';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isResizing) return;
+                
+                const deltaY = e.clientY - startY;
+                const container = requestSection.parentElement;
+                const containerHeight = container.clientHeight;
+                const deltaFlex = (deltaY / containerHeight) * 2;
+                
+                let newRequestFlex = startRequestFlex + deltaFlex;
+                let newResponseFlex = startResponseFlex - deltaFlex;
+                
+                if (newRequestFlex < 0.2) newRequestFlex = 0.2;
+                if (newResponseFlex < 0.2) newResponseFlex = 0.2;
+                
+                requestSection.style.flex = `${newRequestFlex} 1 0%`;
+                responseSection.style.flex = `${newResponseFlex} 1 0%`;
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isResizing) {
+                    isResizing = false;
+                    document.body.style.cursor = '';
+                }
+            });
+        })();
+
+        // Generate STAN
+        function generateSTAN() {
+            return Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
+        // Get local date (MMDD)
+        function getLocalDate() {
+            const now = new Date();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return month + day;
+        }
+
+        // Get local time (HHmmss)
+        function getLocalTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            return hours + minutes + seconds;
+        }
+
+        // Build message
+        function buildMessage() {
+            if (!currentSTAN) {
+                currentSTAN = generateSTAN();
+            }
+
+            const pan = document.getElementById('pan').value.replace(/\s/g, '');
+            const amount = document.getElementById('amount').value;
+            const amountPadded = (parseFloat(amount || 0) * 100).toString().padStart(12, '0');
+
+            let posEntryMode = '051';
+            if (selectedChannel === 'ATM') posEntryMode = '021';
+            else if (selectedChannel === 'Web') posEntryMode = '811';
+
+            // Field 7: Transmission Date & Time (MMDDHHmmss)
+            const transDateTime = getLocalDate() + getLocalTime();
+
+            return {
+                'MTI': '0100',
+                '2': pan, // llvar - length otomatik
+                '3': '000000', // 6 karakter fixed
+                '4': amountPadded, // 12 karakter, zero padded
+                '7': transDateTime, // 10 karakter (MMDDHHmmss)
+                '11': currentSTAN.padStart(6, '0'), // 6 karakter, zero padded
+                '12': getLocalTime(), // 6 karakter (HHmmss)
+                '13': getLocalDate(), // 4 karakter (MMDD)
+                '22': posEntryMode, // 3 karakter fixed
+                '25': '00', // 2 karakter fixed
+                '41': currentTerminalId, // 8 karakter fixed (dinamik)
+                '42': 'MERCH0001234567', // 15 karakter fixed
+                '49': '949' // 3 karakter fixed
+            };
+        }
+
+        // Update real-time preview
+        function updatePreview() {
+            if (!isoEngine.ready) {
+                return;
+            }
+
+            const message = buildMessage();
+            currentMessage = message;
+
+            try {
+                // Generate hex
+                const hexMessage = isoEngine.encode(message);
+                document.getElementById('requestHex').textContent = hexMessage;
+                
+                // Generate ASCII format
+                const asciiMessage = isoEngine.hexToAscii(hexMessage);
+                document.getElementById('requestAscii').textContent = asciiMessage;
+
+                // Parse bitmap from hex
+                const bitmapInfo = isoEngine.extractBitmap(hexMessage);
+                
+                // Update bitmap info
+                document.getElementById('requestPrimaryBitmap').textContent = bitmapInfo.primaryBitmap || '-';
+                document.getElementById('requestSecondaryBitmap').textContent = bitmapInfo.secondaryBitmap || 'None';
+                document.getElementById('requestActiveFields').textContent = bitmapInfo.presentFields.join(', ') || 'None';
+
+                // Display JSON
+                const jsonDisplay = {};
+                for (const [key, value] of Object.entries(message)) {
+                    const fieldSpec = isoEngine.getFieldSpec(key);
+                    if (fieldSpec) {
+                        jsonDisplay[fieldSpec.name] = value;
+                    } else if (key === 'MTI') {
+                        jsonDisplay.MTI = value;
+                    }
+                }
+                document.getElementById('requestJson').textContent = JSON.stringify(jsonDisplay, null, 2);
+
+                // Display parsed fields
+                const fields = isoEngine.messageToFields(message);
+                let tableHTML = '';
+                if (fields.length === 0) {
+                    tableHTML = '<tr class="border-b border-gray-800/30"><td colspan="3" class="px-2 py-2 text-center text-gray-500">No fields parsed</td></tr>';
+                } else {
+                    for (const field of fields) {
+                        tableHTML += `<tr class="border-b border-gray-800/30 hover:bg-[#1a1a1a]/50">`;
+                        tableHTML += `<td class="px-2 py-2 text-emerald-400">${field.number}</td>`;
+                        tableHTML += `<td class="px-2 py-2 text-gray-500">${field.name}</td>`;
+                        tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                        tableHTML += `</tr>`;
+                    }
+                }
+                document.getElementById('requestFields').innerHTML = tableHTML;
+
+                // Update decoded info (right column)
+                const pan = document.getElementById('pan').value.replace(/\s/g, '');
+                const amount = document.getElementById('amount').value;
+                
+                document.getElementById('decodedMTI').textContent = '0100';
+                document.getElementById('decodedAmount').textContent = amount || '0.00';
+                document.getElementById('decodedChannel').textContent = selectedChannel;
+                
+                // Detect card scheme from PAN
+                if (pan) {
+                    const firstDigit = pan.charAt(0);
+                    let scheme = 'UNKNOWN';
+                    if (firstDigit === '4') scheme = 'VISA';
+                    else if (firstDigit === '5') scheme = 'MASTERCARD';
+                    else if (firstDigit === '3') scheme = 'AMEX';
+                    document.getElementById('decodedScheme').textContent = scheme;
+                }
+
+            } catch (error) {
+                console.error('Preview error:', error);
+            }
+        }
+
+        // Format card number display
+        document.getElementById('pan').addEventListener('input', function(e) {
+            // Remove all non-digits
+            let value = e.target.value.replace(/\D/g, '');
+            // Limit to 16 digits
+            value = value.substring(0, 16);
+            // Add space every 4 digits
+            let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+            e.target.value = formattedValue;
+            updatePreview();
+        });
+
+        // Format amount input
+        document.getElementById('amount').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d.]/g, '');
+            
+            // Allow only one decimal point
+            const parts = value.split('.');
+            if (parts.length > 2) {
+                value = parts[0] + '.' + parts.slice(1).join('');
+            }
+            
+            // Limit decimal places to 2
+            if (parts.length === 2 && parts[1].length > 2) {
+                value = parts[0] + '.' + parts[1].substring(0, 2);
+            }
+            
+            e.target.value = value;
+            updatePreview();
+        });
+
+        // Format amount on blur (add .00 if needed)
+        document.getElementById('amount').addEventListener('blur', function(e) {
+            let value = e.target.value;
+            if (value && !value.includes('.')) {
+                e.target.value = value + '.00';
+            } else if (value && value.endsWith('.')) {
+                e.target.value = value + '00';
+            } else if (value && value.split('.')[1]?.length === 1) {
+                e.target.value = value + '0';
+            }
+            updatePreview();
+        });
+
+        // Reset checks and processing state
+        function resetChecks() {
+            isProcessing = false; // Reset processing flag
+            
+            const checks = ['Card', 'Balance', 'Fraud'];
+            checks.forEach(check => {
+                const icon = document.getElementById('check' + check + 'Icon');
+                const text = document.getElementById('check' + check + 'Text');
+                
+                icon.className = 'w-3.5 h-3.5 text-yellow-400/60 animate-pulse';
+                icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M12 6v6l4 2" stroke-width="2" stroke-linecap="round"></path>';
+                
+                text.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400/60';
+                text.textContent = 'PENDING';
+            });
+        }
+
+        // Update check status
+        function updateCheck(checkName, status) {
+            const icon = document.getElementById('check' + checkName + 'Icon');
+            const text = document.getElementById('check' + checkName + 'Text');
+            
+            if (status === 'success') {
+                icon.className = 'w-3.5 h-3.5 text-emerald-400';
+                icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M9 12l2 2 4-4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>';
+                text.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400';
+                text.textContent = 'SUCCESS';
+            } else if (status === 'failed') {
+                icon.className = 'w-3.5 h-3.5 text-red-400';
+                icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke-width="2"></circle><path d="M15 9l-6 6M9 9l6 6" stroke-width="2" stroke-linecap="round"></path>';
+                text.className = 'text-[10px] font-mono px-1.5 py-0.5 rounded bg-red-500/10 text-red-400';
+                text.textContent = 'FAILED';
+            }
+        }
+
+        // Simulate check progression
+        function simulateChecks(scenario) {
+            resetChecks();
+            
+            setTimeout(() => {
+                if (scenario === '14') {
+                    updateCheck('Card', 'failed');
+                } else {
+                    updateCheck('Card', 'success');
+                }
+            }, 500);
+
+            setTimeout(() => {
+                if (scenario === '96') {
+                    updateCheck('Fraud', 'failed');
+                } else {
+                    updateCheck('Fraud', 'success');
+                }
+            }, 1000);
+
+            setTimeout(() => {
+                if (scenario === '51') {
+                    updateCheck('Balance', 'failed');
+                } else if (scenario === '14' || scenario === '96') {
+                    // Keep pending
+                } else {
+                    updateCheck('Balance', 'success');
+                }
+            }, 1500);
+        }
+
+        // Update result display
+        function updateResult(code, text, color) {
+            const resultCard = document.getElementById('resultCard');
+            const codeDisplay = document.getElementById('responseCodeDisplay');
+            const descDisplay = document.getElementById('responseCodeDesc');
+            
+            // Update card border and background
+            if (color === 'emerald') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-emerald-500 bg-emerald-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-emerald-400';
+            } else if (color === 'red') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-red-500 bg-red-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-red-400';
+            } else if (color === 'orange') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-orange-500 bg-orange-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-orange-400';
+            } else if (color === 'amber') {
+                resultCard.className = 'flex-1 rounded-md border-2 border-amber-500 bg-amber-500/5 flex items-center justify-center transition-all';
+                codeDisplay.className = 'text-5xl mb-1 text-amber-400';
+            }
+            
+            codeDisplay.textContent = code;
+            descDisplay.textContent = text;
+        }
+
+        // Handle form submission
+        document.getElementById('transactionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Reset processing flag if stuck
+            if (isProcessing) {
+                console.log('Resetting stuck processing flag');
+                isProcessing = false;
+            }
+            
+            console.log('=== DEBUG ===');
+            console.log('isProcessing:', isProcessing);
+            console.log('isoEngine.ready:', isoEngine.ready);
+            console.log('isoEngine:', isoEngine);
+            console.log('=== END DEBUG ===');
+
+            if (isProcessing || !isoEngine.ready) {
+                console.log('Processing or engine not ready');
+                return;
+            }
+
+            // Build message before processing
+            currentMessage = buildMessage();
+            
+            if (!currentMessage || !currentMessage.MTI) {
+                console.error('Failed to build message');
+                return;
+            }
+
+            isProcessing = true;
+            const scenario = document.getElementById('scenario').value;
+            console.log('Processing transaction with scenario:', scenario);
+
+            // Convert to backend ISOMessage format
+            const payload = {
+                MTI: currentMessage.MTI || '0100',
+                Bitmap: '', // Backend boş kabul etmeli
+                PAN: currentMessage['2'] || '',
+                ProcCode: currentMessage['3'] || '000000',
+                AmountTrn: currentMessage['4'] || '',
+                AmountSet: '', // Boş gönder
+                AmountBil: '', // Boş gönder
+                TransDateTime: currentMessage['7'] || '',
+                ConvRateSet: '', // Boş gönder
+                ConvRateBil: '', // Boş gönder
+                STAN: currentMessage['11'] || '',
+                LocalTime: currentMessage['12'] || '',
+                LocalDate: currentMessage['13'] || '',
+                ExpDate: '', // Boş gönder
+                DateSet: '', // Boş gönder
+                DateConv: '', // Boş gönder
+                MerchantType: '', // Boş gönder
+                POSEntryMode: currentMessage['22'] || '',
+                POSCondCode: currentMessage['25'] || '00',
+                POSPinCode: '', // Boş gönder
+                AcqInstID: '', // Boş gönder
+                Track2Data: '', // Boş gönder
+                RRN: '', // Boş gönder
+                AuthRespID: '', // Boş gönder
+                RespCode: '', // Boş gönder
+                TerminalID: currentTerminalId,
+                MerchantID: currentMessage['42'] || 'MERCH0001234567', // 15 karakter sabit
+                MerchantLoc: '', // Boş gönder
+                AddDataNat: '', // Boş gönder
+                AddDataPriv: '', // Boş gönder
+                CurCodeTrn: currentMessage['49'] || '949',
+                CurCodeBil: '', // Boş gönder
+                PinData: '', // Boş gönder
+                SecurityData: '', // Boş gönder
+                AddAmounts: '', // Boş gönder
+                Priv2: '', // Boş gönder
+                ReservedPriv: '', // Boş gönder
+                NwManagementInf: '' // Boş gönder
+            };
+            
+            console.log('Sending payload:', payload);
+
+            try {
+                // Start checks animation
+                simulateChecks(scenario);
+
+                const response = await fetch('/v1/transaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const responseText = await response.text();
+                console.log('Response status:', response.status);
+                console.log('Response text:', responseText);
+                
+                if (!response.ok) {
+                    console.error('Backend error:', responseText);
+                    isProcessing = false;
+                    return;
+                }
+                
+                const data = JSON.parse(responseText);
+
+                // Parse response hex using ISO engine
+                if (data.response_hex) {
+                    try {
+                        const responseMessage = isoEngine.decode(data.response_hex);
+                        
+                        // Parse bitmap from response hex
+                        const responseBitmapInfo = isoEngine.extractBitmap(data.response_hex);
+                        
+                        // Display response hex
+                        document.getElementById('responseHex').textContent = data.response_hex;
+
+                        // Generate ASCII format for response
+                        const responseAsciiMessage = isoEngine.hexToAscii(data.response_hex);
+                        document.getElementById('responseAscii').textContent = responseAsciiMessage;
+
+                        // Update response bitmap info
+                        document.getElementById('responsePrimaryBitmap').textContent = responseBitmapInfo.primaryBitmap || '-';
+                        document.getElementById('responseSecondaryBitmap').textContent = responseBitmapInfo.secondaryBitmap || 'None';
+                        document.getElementById('responseActiveFields').textContent = responseBitmapInfo.presentFields.join(', ') || 'None';
+
+                        // Display response JSON
+                        const responseJSON = {};
+                        for (const [key, value] of Object.entries(responseMessage)) {
+                            responseJSON[key] = value;
+                        }
+                        document.getElementById('responseJson').textContent = JSON.stringify(responseJSON, null, 2);
+
+                        // Display response parsed fields
+                        const fields = isoEngine.messageToFields(responseMessage);
+                        let tableHTML = '';
+                        for (const field of fields) {
+                            tableHTML += `<tr class="border-b border-gray-800/30 hover:bg-[#1a1a1a]/50">`;
+                            tableHTML += `<td class="px-2 py-2 text-purple-400">${field.number}</td>`;
+                            tableHTML += `<td class="px-2 py-2 text-gray-500">${field.name}</td>`;
+                            tableHTML += `<td class="px-2 py-2 text-gray-300">${field.value}</td>`;
+                            tableHTML += `</tr>`;
+                        }
+                        document.getElementById('responseFields').innerHTML = tableHTML;
+
+                        // Update response code display
+                        const respCode = responseMessage.RespCode || responseMessage['39'] || data.response?.RespCode || '00';
+                        
+                        setTimeout(() => {
+                            if (respCode === '00') {
+                                updateResult('00', 'Approved', 'emerald');
+                            } else if (respCode === '51') {
+                                updateResult('51', 'Insufficient Funds', 'red');
+                            } else if (respCode === '14') {
+                                updateResult('14', 'Invalid Card', 'orange');
+                            } else if (respCode === '96') {
+                                updateResult('96', 'System Error', 'amber');
+                            } else {
+                                const responseCodeDesc = isoEngine.getResponseCodeDesc(respCode);
+                                updateResult(respCode, responseCodeDesc, 'red');
+                            }
+                            
+                            isProcessing = false;
+                        }, 1500);
+
+                    } catch (parseError) {
+                        console.error('Response parse error:', parseError);
+                        document.getElementById('responseFields').innerHTML = '<tr><td colspan="3" class="px-2 py-2 text-center text-red-400">Failed to parse response</td></tr>';
+                        document.getElementById('responseHex').textContent = data.response_hex;
+                        isProcessing = false;
+                    }
+                }
+
+                // Reset STAN for next transaction
+                currentSTAN = '';
+
+            } catch (error) {
+                console.error('Transaction error:', error);
+                updateResult('XX', 'Network Error', 'red');
+                isProcessing = false;
+            }
+        });
+    </script>
+</body>
+</html>
