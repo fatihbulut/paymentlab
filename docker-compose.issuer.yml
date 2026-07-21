@@ -14,8 +14,8 @@ services:
         soft: 65535
         hard: 65535
     environment:
-      POSTGRES_DB: paymentlab
-      POSTGRES_USER: paymentlab
+      POSTGRES_DB: ${POSTGRES_DB:-paymentlab}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
@@ -48,7 +48,7 @@ services:
     ports:
       - "5001:5001"
     environment:
-      DATABASE_URL: postgres://paymentlab:${POSTGRES_PASSWORD}@postgres:5432/paymentlab?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable
       ISSUER_LISTEN: 0.0.0.0:5001
       ISSUER_WORKER_POOL: ${ISSUER_WORKER_POOL:-50}
       WORKER_ACQUIRE_TIMEOUT_SEC: ${WORKER_ACQUIRE_TIMEOUT_SEC:-2}

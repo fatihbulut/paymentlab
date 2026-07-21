@@ -2,9 +2,9 @@ services:
   issuer_postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: paymentlab
-      POSTGRES_USER: paymentlab
-      POSTGRES_PASSWORD: paymentlab
+      POSTGRES_DB: ${POSTGRES_DB:-paymentlab}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paymentlab}
     ports:
       - "5432:5432"
     volumes:
@@ -29,9 +29,9 @@ services:
   acquirer_postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: acquirer
-      POSTGRES_USER: paymentlab
-      POSTGRES_PASSWORD: paymentlab
+      POSTGRES_DB: ${ACQUIRER_POSTGRES_DB:-acquirer}
+      POSTGRES_USER: ${POSTGRES_USER:-paymentlab}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-paymentlab}
     ports:
       - "5433:5432"
     volumes:
@@ -60,7 +60,7 @@ services:
     ports:
       - "5001:5001"
     environment:
-      DATABASE_URL: postgres://paymentlab:paymentlab@issuer_postgres:5432/paymentlab?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD:-paymentlab}@issuer_postgres:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable
       ISSUER_LISTEN: 0.0.0.0:5001
     depends_on:
       - issuer_postgres
@@ -72,8 +72,8 @@ services:
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: postgres://paymentlab:paymentlab@acquirer_postgres:5432/acquirer?sslmode=disable
-      ISSUER_DATABASE_URL: postgres://paymentlab:paymentlab@issuer_postgres:5432/paymentlab?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD:-paymentlab}@acquirer_postgres:5432/${ACQUIRER_POSTGRES_DB:-acquirer}?sslmode=disable
+      ISSUER_DATABASE_URL: postgres://${POSTGRES_USER:-paymentlab}:${POSTGRES_PASSWORD:-paymentlab}@issuer_postgres:5432/${POSTGRES_DB:-paymentlab}?sslmode=disable
       ISSUER_ADDR: issuer:5001
       ACQUIRER_PORT: 8081
       MAX_CONCURRENT: 500

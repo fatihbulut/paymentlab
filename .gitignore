@@ -18,7 +18,13 @@ go.work.sum
 
 # Environment files
 .env
+.env.*
 .env.local
+.env.*.local
+config.local.*
+secrets.*
+*.key
+!.env.example
 
 # IDE / Windsurf
 .vscode/
