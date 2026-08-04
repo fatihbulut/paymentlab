@@ -197,4 +197,4 @@ _TBD — contributions and suggestions welcome. Open an issue to propose a direc
 
 ## License
 
-_TBD — no license has been chosen for this project yet._ Until a `LICENSE` file is added, all rights are reserved by the author.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
