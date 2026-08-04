@@ -17,6 +17,20 @@ The project simulates the two sides of a card transaction:
 
 Both services are independent Go binaries, each with their own PostgreSQL database, and can be run together locally with a single `docker compose up`, or deployed as two separate services (e.g. on different hosts) using the split compose files.
 
+## Screenshots
+
+### Transaction Simulator
+
+<img width="2860" height="1512" alt="image" src="https://github.com/user-attachments/assets/36b72c31-5733-464a-b627-22da9a24ef75" />
+
+*Build ISO 8583 requests, inspect parsed fields, and trace issuer responses.*
+
+### Webhook Integration
+
+<img width="2838" height="1506" alt="image" src="https://github.com/user-attachments/assets/1868fa5d-a0d8-4d52-b19f-8b70a2d7e809" />
+
+*Receive signed webhook events with automatic retries and delivery history.*
+
 ## Architecture
 
 ```
