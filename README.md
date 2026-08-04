@@ -1,5 +1,11 @@
 # PaymentLab
 
+![Go](https://img.shields.io/badge/Go-1.25-00ADD8?logo=go)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker)
+![ISO8583](https://img.shields.io/badge/ISO-8583-orange)
+![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-enabled-7A3E9D?logo=opentelemetry)
+
 **PaymentLab** is a microservice-based ISO 8583 payment simulator that models a realistic acquirer/issuer payment flow — built for testing, learning, and prototyping against ISO 8583 financial messaging without touching a real card network.
 
 ## Overview
