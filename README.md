@@ -61,7 +61,6 @@ Full C4 model diagrams (context / container / component level) are in [`docs/`](
 
 - Interactive web interface for building and inspecting ISO 8583 messages
 - ISO 8583 message encoding/decoding driven by a declarative spec ([`web/spec.json`](web/spec.json)) — no hardcoded field layouts
-- ISO 8583 message encoding/decoding driven by a declarative spec ([`web/spec.json`](web/spec.json)) — no hardcoded field layouts
 - Acquirer ↔ Issuer flow over raw TCP, mirroring how real payment switches communicate
 - Card management API (create, list, update, delete, top-up)
 - Transaction processing with configurable backpressure (in-flight limits, queueing, timeouts) so overload degrades predictably (`429`/`504`) instead of falling over
